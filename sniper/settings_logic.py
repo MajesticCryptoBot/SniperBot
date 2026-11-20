@@ -16,15 +16,17 @@ SETTING_NAMES = (
 )
 
 SETTING_HELP = (
-    "slippage · quote slippage %\n"
+    "<b>KEYS</b>\n"
+    "slippage · percent\n"
     "priority_fee · lamports\n"
-    "max_sol · max SOL per trade\n"
-    "daily_limit · max SOL per UTC day\n"
+    "max_sol · SOL per trade\n"
+    "daily_limit · SOL per UTC day\n"
     "snipe_amount · autosnipe SOL\n"
     "snipe_impact · autosnipe impact cap %\n"
     "impact · manual impact cap %\n"
     "auto_buy_amount · auto-buy SOL\n"
-    "take_profit / stop_loss · exit levels %"
+    "take_profit · exit gain %\n"
+    "stop_loss · exit loss %"
 )
 
 

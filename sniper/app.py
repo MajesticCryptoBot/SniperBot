@@ -15,7 +15,7 @@ from sniper.crypto import EnvelopeCipher
 from sniper.db import Database
 from sniper.handlers import flows
 from sniper.handlers.admin import admin_fees, admin_gate, admin_pause, admin_resume, admin_stats, admin_user
-from sniper.handlers.common import looks_like_secret, reply, services
+from sniper.handlers.common import UNEXPECTED, looks_like_secret, reply, services
 from sniper.handlers.portfolio import orders, summary
 from sniper.handlers.settings import autosnipe, config_command, on_config_callback, on_snipe_callback, resume, stop
 from sniper.handlers.start import help_command, on_check_sub, on_help_callback, start
@@ -218,7 +218,7 @@ async def _on_error(update: object, context) -> None:
         message = update.effective_message
     if message is not None:
         try:
-            await message.reply_text("⚠️ Unexpected error. Please try again shortly. Check /orders before retrying a trade.")
+            await message.reply_text(UNEXPECTED, parse_mode="HTML")
         except Exception:
             logger.warning("could not deliver the error notice to the chat")
 
@@ -230,7 +230,7 @@ async def _cancel(update: Update, context) -> None:
         return
     flow = flows.cancel(context)
     if flow:
-        await reply(update, "✅ Input flow cancelled.")
+        await reply(update, "<b>CANCELLED</b>\nInput flow cancelled.")
         return
     await reply(update, "No active input flow.")
 
@@ -242,9 +242,9 @@ async def _handle_text(update: Update, context) -> None:
         try:
             await update.message.delete()
         except Exception:
-            await reply(update, "🚨 Telegram refused deletion. Remove that message immediately. The bot did not store it.")
+            await reply(update, "<b>DELETE THAT MESSAGE</b>\nTelegram refused deletion. Remove it now. It was not stored.")
             return
-        await reply(update, "🛡️ Key-like message deleted and not stored. Use /import to replace the wallet intentionally.")
+        await reply(update, "<b>KEY NOT STORED</b>\nThat message was deleted. Use /import to replace the wallet.")
         return
     if await flows.handle(update, context, text):
         return
@@ -254,7 +254,7 @@ async def _handle_text(update: Update, context) -> None:
         # A bare setting name typed under the /config panel starts that flow.
         await flows.begin(update, context, "config", prefill={"name": text.strip().lower()})
         return
-    await reply(update, "❓ <b>MESSAGE NOT RECOGNISED</b>\n\nSend /help for commands, or paste a token mint / supported link to open its panel.")
+    await reply(update, "<b>NOT RECOGNISED</b>\n\nSend /help, or paste a token mint or supported link.")
 
 
 async def _handle_caption(update: Update, context) -> None:
@@ -263,7 +263,7 @@ async def _handle_caption(update: Update, context) -> None:
     same way. A caption with nothing tradable stays silent — no nagging."""
     text = update.message.caption or ""
     if looks_like_secret(text):
-        await reply(update, "🛡️ Key-like caption not processed. Never share private keys in chat.")
+        await reply(update, "<b>KEY NOT READ</b>\nDo not send a private key in a caption.")
         return
     if await flows.handle(update, context, text):
         return

@@ -28,20 +28,22 @@ class SafetyReport:
     def summary(self) -> str:
         lines = []
         if self.blockers:
-            lines.append("🚫 <b>BLOCKED</b>: " + esc("; ".join(self.blockers)))
+            lines.append("<b>BLOCKED</b>")
+            lines.append(esc("; ".join(self.blockers)))
         if self.warnings:
-            lines.append("⚠️ <b>WARNINGS</b>: " + esc("; ".join(self.warnings)))
-        if not lines:
-            lines.append("✅ No blocking issue found by the completed checks.")
+            lines.append("<b>WARNINGS</b>")
+            lines.append(esc("; ".join(self.warnings)))
+        if not self.blockers and not self.warnings:
+            lines.append("No blocking issue in the completed checks.")
         extra = []
         if self.risk_level:
-            extra.append(f"risk {esc(self.risk_level)}")
+            extra.append(f"Risk {esc(self.risk_level)}")
         if self.lp_locked_pct is not None:
             extra.append(f"LP {self.lp_locked_pct:.1f}%")
         if self.liquidity_sol is not None:
-            extra.append(f"liq ~{self.liquidity_sol:.2f} SOL")
+            extra.append(f"Liquidity ~{self.liquidity_sol:.2f} SOL")
         if extra:
-            lines.append("Data: " + ", ".join(extra))
+            lines.append(" · ".join(extra))
         return "\n".join(lines)
 
 

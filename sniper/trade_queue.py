@@ -25,7 +25,7 @@ from sniper.signing import partial_sign
 from sniper.solana_service import WSOL
 from sniper.solana_tx import build_sol_transfer
 from sniper.timeutil import age_seconds, start_of_utc_day, utcnow
-from sniper.ui import esc, info
+from sniper.ui import card, esc, info, mono
 
 logger = logging.getLogger(__name__)
 
@@ -194,20 +194,26 @@ class TradeQueue:
                     success=False,
                     error="Cancelled before submission.",
                 )
-                await self._notify(row.get("chat_id"), "❌ <b>TRADE CANCELLED</b>\nCancelled before submission. No transaction was sent.")
+                await self._notify(row.get("chat_id"), "<b>TRADE CANCELLED</b>\nCancelled before submission. Nothing was sent.")
                 continue
             if status == "submitted" and signature:
                 ok, err = await self.rpc.confirm(signature, timeout_s=8)
                 if ok:
                     fee = await self.rpc.transaction_fee(signature)
                     await self.db.finalize(row["id"], success=True, fee_lamports=fee)
-                    await self._notify(row.get("chat_id"), f"✅ <b>TRANSACTION CONFIRMED</b>\n\nSignature:\n{esc(signature)}")
+                    await self._notify(row.get("chat_id"), "<b>TRANSACTION CONFIRMED</b>\n\n" + card(["Signature", mono(signature)]))
                 elif err and "Timed out" not in err and age > 20:
                     await self.db.finalize(row["id"], success=False, error=err)
-                    await self._notify(row.get("chat_id"), f"❌ <b>TRANSACTION FAILED</b>\n\nReason: {esc(err)}\nSignature:\n{esc(signature)}")
+                    await self._notify(row.get("chat_id"), "<b>TRANSACTION FAILED</b>\n\n" + card([f"Reason: {esc(err)}", "Signature", mono(signature)]))
                 elif age > 600 and err:
                     await self.db.finalize(row["id"], success=False, error=err)
-                    await self._notify(row.get("chat_id"), f"⏳ <b>CONFIRMATION NOT RECEIVED</b>\nThe transaction may still have settled.\n\nSignature:\n{esc(signature)}\n\n" + info("Verify its status before retrying."))
+                    await self._notify(
+                        row.get("chat_id"),
+                        "<b>CONFIRMATION PENDING</b>\nThe transaction may still have settled.\n\n"
+                        + card(["Signature", mono(signature)])
+                        + "\n\n"
+                        + info("Check its status before you retry."),
+                    )
 
     async def enqueue_preview(self, preview: PendingPreview, source: str) -> str:
         trade_id = str(uuid.uuid4())
@@ -248,7 +254,7 @@ class TradeQueue:
             await self.db.finalize(trade_id, success=False, error="Service busy, trade not accepted.")
             self.metrics["queue_full"] = self.metrics.get("queue_full", 0) + 1
             logger.warning("trade queue full; refusing trade %s", trade_id)
-            raise UserFacingError("The execution service is currently at capacity. Please try again shortly.") from exc
+            raise UserFacingError("The execution service is at capacity. Try again shortly.") from exc
         self.metrics["enqueued"] = self.metrics.get("enqueued", 0) + 1
         return trade_id
 
@@ -303,14 +309,18 @@ class TradeQueue:
             preview.chat_id,
             "\n".join(
                 [
-                    "🎯 <b>AUTOSNIPE TRIGGERED</b>",
+                    "<b>AUTOSNIPE TRIGGERED</b>",
                     "",
-                    f"Mint: {esc(mint)}",
-                    f"Entry: {amount:.4f} SOL",
-                    f"Reference: {trade_id}",
-                    "",
-                    "🛡️ Safety: PASSED",
-                    report.summary(),
+                    card(
+                        [
+                            f"Mint: {esc(mint)}",
+                            f"Entry: {amount:.4f} SOL",
+                            f"Reference: {trade_id}",
+                            "",
+                            "Safety: passed",
+                            report.summary(),
+                        ]
+                    ),
                 ]
             ),
         )
@@ -367,12 +377,16 @@ class TradeQueue:
             preview.chat_id,
             "\n".join(
                 [
-                    "⚡ <b>LIMIT BUY TRIGGERED</b>",
+                    "<b>LIMIT BUY TRIGGERED</b>",
                     "",
-                    f"Mint: {esc(mint)}",
-                    f"Trigger: ${target:g}",
-                    f"Size: {amount:.4f} SOL",
-                    f"Reference: {trade_id}",
+                    card(
+                        [
+                            f"Mint: {esc(mint)}",
+                            f"Trigger: ${target:g}",
+                            f"Size: {amount:.4f} SOL",
+                            f"Reference: {trade_id}",
+                        ]
+                    ),
                 ]
             ),
         )
@@ -404,11 +418,11 @@ class TradeQueue:
             return None, "sell amount rounded to zero"
         if row["kind"] == "trailing_stop":
             headline = (
-                f"⚡ <b>TRAILING STOP TRIGGERED</b>\n\nMint: {esc(mint)}\n"
+                f"<b>TRAILING STOP TRIGGERED</b>\n\nMint: {esc(mint)}\n"
                 f"Pullback: {float(row['trail_distance_pct']):g}% below peak ${float(row.get('peak_price_usd') or 0):g}"
             )
         else:
-            headline = f"⚡ <b>LIMIT SELL TRIGGERED</b>\n\nMint: {esc(mint)}\nTarget reached: ${float(row.get('target_price_usd') or 0):g}"
+            headline = f"<b>LIMIT SELL TRIGGERED</b>\n\nMint: {esc(mint)}\nTarget reached: ${float(row.get('target_price_usd') or 0):g}"
         preview = PendingPreview(
             preview_id=idem,
             telegram_id=telegram_id,
@@ -488,13 +502,17 @@ class TradeQueue:
             preview.chat_id,
             "\n".join(
                 [
-                    "🤖 <b>AUTO-BUY TRIGGERED</b>",
+                    "<b>AUTO-BUY TRIGGERED</b>",
                     "",
-                    f"Mint: {esc(mint)}",
-                    f"Size: {amount_sol:.4f} SOL",
-                    f"Reference: {trade_id}",
+                    card(
+                        [
+                            f"Mint: {esc(mint)}",
+                            f"Size: {amount_sol:.4f} SOL",
+                            f"Reference: {trade_id}",
+                        ]
+                    ),
                     "",
-                    info("Auto-buy skips confirmation and the safety gate · /stop pauses activity."),
+                    info("Confirmation and the safety gate are skipped. /stop pauses new activity."),
                 ]
             ),
         )
@@ -527,9 +545,9 @@ class TradeQueue:
             return None, "sell amount rounded to zero"
         price_text = f"${float(price_usd):g}" if price_usd else "n/a"
         if kind == "stop_loss":
-            headline = f"🛑 <b>STOP-LOSS TRIGGERED</b>\n\nMint: {esc(mint)}\nPerformance: {pnl_pct:.1f}% · price {price_text}"
+            headline = f"<b>STOP-LOSS TRIGGERED</b>\n\nMint: {esc(mint)}\nPerformance: {pnl_pct:.1f}% · price {price_text}"
         else:
-            headline = f"📈 <b>TAKE-PROFIT TRIGGERED</b>\n\nMint: {esc(mint)}\nPerformance: +{pnl_pct:.1f}% · price {price_text}"
+            headline = f"<b>TAKE-PROFIT TRIGGERED</b>\n\nMint: {esc(mint)}\nPerformance: +{pnl_pct:.1f}% · price {price_text}"
         preview = PendingPreview(
             preview_id=idem,
             telegram_id=telegram_id,
@@ -583,12 +601,18 @@ class TradeQueue:
                 await self.db.finalize(trade_id, success=False, error=str(exc))
             if current and current.get("signature"):
                 notice = (
-                    f"⏳ <b>TRADE SUBMITTED · VERIFY STATUS</b>\n\n"
-                    f"Reason: {esc(str(exc))}\nSignature:\n{esc(current['signature'])}\n\n"
-                    + info("It may still settle · check /orders before retrying.")
+                    "<b>SUBMITTED · CHECK STATUS</b>\n\n"
+                    + card([f"Reason: {esc(str(exc))}", "Signature", mono(current["signature"])])
+                    + "\n\n"
+                    + info("It may still settle. Check /orders before you retry.")
                 )
             else:
-                notice = f"❌ <b>TRADE NOT EXECUTED</b>\n\nReason: {esc(str(exc))}\n\n" + info("No signature recorded · review before retrying.")
+                notice = (
+                    "<b>TRADE NOT EXECUTED</b>\n\n"
+                    + card([f"Reason: {esc(str(exc))}"])
+                    + "\n\n"
+                    + info("No signature was recorded. Review it before you retry.")
+                )
             await self._notify(trade.get("chat_id"), notice)
             self.metrics["trades_failed"] = self.metrics.get("trades_failed", 0) + 1
         except Exception as exc:
@@ -596,7 +620,7 @@ class TradeQueue:
             current = await self.db.get_trade(trade_id)
             if await self._retry_transient(trade_id, trade, current, exc):
                 return
-            message = "⚠️ Unexpected execution error. Check /orders before retrying the trade."
+            message = "<b>EXECUTION ERROR</b>\nCheck /orders before you retry."
             if current and current.get("signature"):
                 await self.db.update_trade_fields(trade_id, status="submitted", error=exc.__class__.__name__)
             else:
@@ -633,9 +657,13 @@ class TradeQueue:
                 row.get("chat_id"),
                 "\n".join(
                     [
-                        "📡 <b>NETWORK INTERRUPTION</b>\nYour request has been returned to the execution queue.",
-                        f"Retry attempt: {attempts + 1} · next in ~{delay:.0f}s",
-                        f"Reference: {trade_id}",
+                        "<b>NETWORK INTERRUPTION</b>\nYour request has been returned to the execution queue.",
+                        card(
+                            [
+                                f"Attempt: {attempts + 1} · next in ~{delay:.0f}s",
+                                f"Reference: {trade_id}",
+                            ]
+                        ),
                     ]
                 ),
             )
@@ -657,7 +685,7 @@ class TradeQueue:
                 )
                 await self._notify(
                     row.get("chat_id"),
-                    "❌ <b>TRADE NOT SUBMITTED</b>\nQueue full after a network interruption. No transaction was sent.",
+                    "<b>TRADE NOT SUBMITTED</b>\nThe queue was full after a network interruption. Nothing was sent.",
                 )
         except asyncio.CancelledError:
             raise
@@ -722,7 +750,7 @@ class TradeQueue:
             if user["trading_paused"]:
                 raise UserFacingError("Trading is paused for this account. Use /resume before submitting new requests.")
             if await self.db.get_state("global_pause") == "1":
-                raise UserFacingError("Trading is temporarily paused. Please try again later.")
+                raise UserFacingError("Trading is paused. Try again later.")
             if hourly >= self.cfg.max_trades_per_hour:
                 raise UserFacingError(f"Hourly trade cap reached ({self.cfg.max_trades_per_hour} per user).")
         elif not ok:
@@ -738,7 +766,7 @@ class TradeQueue:
             keypair = Keypair.from_bytes(secret)
         except Exception as exc:
             logger.warning("wallet decrypt failed for user=%s: %s", telegram_id, exc.__class__.__name__)
-            raise UserFacingError("The connected wallet is temporarily unavailable. Please try again later.") from exc
+            raise UserFacingError("The connected wallet is unavailable. Try again later.") from exc
         return keypair
 
     async def _swap(self, trade: dict) -> None:
@@ -837,9 +865,9 @@ class TradeQueue:
                     if ok:
                         result_ok = True
                     else:
-                        raise UserFacingError(result.error or err or "The swap could not be completed. Please try again shortly.")
+                        raise UserFacingError(result.error or err or "The swap was not completed. Try again shortly.")
                 else:
-                    raise UserFacingError(result.error or "The swap could not be completed. Please try again shortly.")
+                    raise UserFacingError(result.error or "The swap was not completed. Try again shortly.")
             else:
                 result_ok = True
             if result_ok and result.signature:
@@ -850,13 +878,32 @@ class TradeQueue:
                     self.metrics["trades_confirmed"] = self.metrics.get("trades_confirmed", 0) + 1
                     await self._notify(
                         trade.get("chat_id"),
-                        f"✅ <b>{trade['side'].upper()} CONFIRMED</b>\n\nReference: {trade['id']}\nMint: {esc(trade['token_mint'])}\nSignature:\n{esc(result.signature)}",
+                        f"<b>{trade['side'].upper()} CONFIRMED</b>\n\n"
+                        + card(
+                            [
+                                f"Reference: {trade['id']}",
+                                f"Mint: {esc(trade['token_mint'])}",
+                                "Signature",
+                                mono(result.signature),
+                            ]
+                        ),
                     )
                 else:
                     await self.db.update_trade_fields(trade["id"], status="submitted", error=err, fee_lamports=fee)
                     await self._notify(
                         trade.get("chat_id"),
-                        f"⏳ <b>{trade['side'].upper()} SUBMITTED · CONFIRMATION PENDING</b>\n\nReference: {trade['id']}\nMint: {esc(trade['token_mint'])}\nSignature:\n{esc(result.signature)}\nDetail: {esc(err)}\n\n" + info("It may still settle · verify before retrying."),
+                        f"<b>{trade['side'].upper()} SUBMITTED</b>\nConfirmation is still pending.\n\n"
+                        + card(
+                            [
+                                f"Reference: {trade['id']}",
+                                f"Mint: {esc(trade['token_mint'])}",
+                                "Signature",
+                                mono(result.signature),
+                                f"Detail: {esc(err)}",
+                            ]
+                        )
+                        + "\n\n"
+                        + info("It may still settle. Check it before you retry."),
                     )
         finally:
             del keypair
@@ -894,10 +941,35 @@ class TradeQueue:
             if ok:
                 await self.db.finalize(trade["id"], success=True, fee_lamports=fee)
                 self.metrics["trades_confirmed"] = self.metrics.get("trades_confirmed", 0) + 1
-                await self._notify(trade.get("chat_id"), f"✅ <b>WITHDRAWAL CONFIRMED</b>\n\nReference: {trade['id']}\nAmount: {amount:.6f} SOL\nTo: {esc(trade['destination'])}\nSignature:\n{esc(signature)}")
+                await self._notify(
+                    trade.get("chat_id"),
+                    "<b>WITHDRAWAL CONFIRMED</b>\n\n"
+                    + card(
+                        [
+                            f"Reference: {trade['id']}",
+                            f"Amount: {amount:.6f} SOL",
+                            f"To: {esc(trade['destination'])}",
+                            "Signature",
+                            mono(signature),
+                        ]
+                    ),
+                )
             else:
                 await self.db.update_trade_fields(trade["id"], status="submitted", error=err, fee_lamports=fee)
-                await self._notify(trade.get("chat_id"), f"⏳ <b>WITHDRAWAL SUBMITTED · CONFIRMATION PENDING</b>\n\nReference: {trade['id']}\nAmount: {amount:.6f} SOL\nTo: {esc(trade['destination'])}\nSignature:\n{esc(signature)}\nDetail: {esc(err)}")
+                await self._notify(
+                    trade.get("chat_id"),
+                    "<b>WITHDRAWAL SUBMITTED</b>\nConfirmation is still pending.\n\n"
+                    + card(
+                        [
+                            f"Reference: {trade['id']}",
+                            f"Amount: {amount:.6f} SOL",
+                            f"To: {esc(trade['destination'])}",
+                            "Signature",
+                            mono(signature),
+                            f"Detail: {esc(err)}",
+                        ]
+                    ),
+                )
         finally:
             del keypair
 

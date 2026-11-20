@@ -125,10 +125,10 @@ class TriggerMonitor:
                 int(row.get("chat_id") or row["telegram_id"]),
                 "\n".join(
                     [
-                        "❌ <b>ORDER NOT EXECUTED</b>\nThe order could not be submitted and has been disarmed.",
+                        "<b>ORDER NOT EXECUTED</b>\nThe order could not be submitted and has been disarmed.",
                         f"Reason: {esc(reason)}",
                         "",
-                        info("No transaction was signed · create a new order with /buy or /sell."),
+                        info("Nothing was signed. Create a new order from /buy or /sell."),
                     ]
                 ),
             )

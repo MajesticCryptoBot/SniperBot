@@ -82,10 +82,10 @@ class WatchlistMonitor:
                 chat_id,
                 "\n".join(
                     [
-                        "🚫 <b>AUTOSNIPE BLOCKED</b>\nSafety checks failed. No buy was submitted.",
+                        "<b>AUTOSNIPE BLOCKED</b>\nSafety checks failed. No buy was submitted.",
                         f"Reason: {esc(reason)}",
                         "",
-                        info("Entry removed · only add tokens you trust · a report is not a guarantee."),
+                        info("The entry was removed. Add only tokens you trust. A report is not a guarantee."),
                     ]
                 ),
             )
@@ -103,10 +103,10 @@ class WatchlistMonitor:
                 chat_id,
                 "\n".join(
                     [
-                        "🚫 <b>AUTOSNIPE NOT QUEUED</b>\nThe buy was rejected before entering the execution queue.",
+                        "<b>AUTOSNIPE NOT QUEUED</b>\nThe buy was rejected before it entered the queue.",
                         f"Reason: {esc(reason)}",
                         "",
-                        info("No transaction was signed · review before re-adding."),
+                        info("Nothing was signed. Review the reason before you add it again."),
                     ]
                 ),
             )

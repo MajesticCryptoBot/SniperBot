@@ -88,20 +88,20 @@ class SubscriptionGate:
         if errors:
             return GateResult(
                 False,
-                "⏳ Membership could not be verified right now. Tap “✅ I've joined · Verify access” in a moment.",
+                "Membership could not be verified right now. Tap “✅ I've joined · Verify access” in a moment.",
                 True,
                 missing,
                 error_detail="\n".join(errors),
             )
         if missing:
             lines = [
-                "🔒 <b>ACCESS REQUIRED</b>",
+                "<b>ACCESS REQUIRED</b>",
                 "",
-                "Join both channels to use the bot, then tap “✅ I've joined · Verify access”.",
+                "Join both channels, then tap “✅ I've joined · Verify access”.",
                 "",
             ]
             for channel in self.channels:
-                state = "🔴 not joined" if channel in missing else "🟢 joined"
+                state = "Not joined" if channel in missing else "Joined"
                 lines.append(f"{state} · {esc(channel)}")
             return GateResult(False, "\n".join(lines), False, missing)
         return GateResult(True, "", False, [])

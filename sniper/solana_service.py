@@ -28,7 +28,7 @@ WSOL = "So11111111111111111111111111111111111111112"
 class SolanaService:
     def __init__(self, urls: list[str], http: httpx.AsyncClient | None = None):
         if not urls:
-            raise UserFacingError("The service is not available right now. Please try again later.")
+            raise UserFacingError("Service unavailable. Try again later.")
         self.urls = urls
         self.http = http
         self._owns_http = http is None
@@ -54,7 +54,7 @@ class SolanaService:
 
     async def _with_client(self, operation):
         if not self._clients:
-            raise UserFacingError("The service is starting up. Please try again in a moment.")
+            raise UserFacingError("Service is starting. Try again in a moment.")
         last = None
         for attempt in range(len(self._clients)):
             client = self._clients[(self._index + attempt) % len(self._clients)]
@@ -67,11 +67,11 @@ class SolanaService:
                 logger.warning("RPC attempt %s failed: %s", attempt + 1, exc.__class__.__name__)
                 self._index = (self._index + 1) % len(self._clients)
         logger.warning("all RPC endpoints failed: %s", last)
-        raise UserFacingError("The network is not responding right now. Please try again shortly.")
+        raise UserFacingError("The network did not respond. Try again shortly.")
 
     async def rpc(self, method: str, params: list):
         if self.http is None:
-            raise UserFacingError("The service is starting up. Please try again in a moment.")
+            raise UserFacingError("Service is starting. Try again in a moment.")
         last = None
         for attempt in range(len(self.urls)):
             url = self.urls[(self._index + attempt) % len(self.urls)]
@@ -90,7 +90,7 @@ class SolanaService:
                 logger.warning("JSON-RPC %s attempt %s failed: %s", method, attempt + 1, exc.__class__.__name__)
                 self._index = (self._index + 1) % len(self.urls)
         logger.warning("JSON-RPC %s failed: %s", method, last)
-        raise UserFacingError("The network request failed. Please try again shortly.")
+        raise UserFacingError("The network request failed. Try again shortly.")
 
     async def get_balance_lamports(self, pubkey: str) -> int:
         owner = Pubkey.from_string(pubkey)
@@ -141,7 +141,7 @@ class SolanaService:
                 if "confirmed" in conf or "finalized" in conf:
                     return True, None
             await asyncio.sleep(1)
-        return False, "Confirmation is taking longer than expected. The transaction was submitted and may still confirm."
+        return False, "Confirmation is still pending. The transaction was submitted and may still confirm."
 
     async def _signature_status(self, sig: Signature):
         async def operation(client: AsyncClient):
@@ -155,14 +155,14 @@ class SolanaService:
         try:
             Pubkey.from_string(mint)
         except Exception as exc:
-            raise UserFacingError("The supplied mint is not a valid Solana public key.") from exc
+            raise UserFacingError("That is not a valid Solana public key.") from exc
         result = await self.rpc("getAccountInfo", [mint, {"encoding": "jsonParsed", "commitment": "confirmed"}])
         value = (result or {}).get("value")
         if not value:
-            raise UserFacingError("The token mint could not be found on-chain.")
+            raise UserFacingError("That mint was not found on-chain.")
         parsed = ((value.get("data") or {}).get("parsed") or {})
         if parsed.get("type") != "mint":
-            raise UserFacingError("The supplied address is not an SPL token mint.")
+            raise UserFacingError("That address is not an SPL token mint.")
         info = parsed.get("info") or {}
         return {
             "decimals": int(info.get("decimals") or 0),

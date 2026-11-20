@@ -13,6 +13,8 @@ from sniper.keyboards import join_keyboard
 
 logger = logging.getLogger(__name__)
 
+UNEXPECTED = "<b>UNEXPECTED ERROR</b>\nTry again shortly. Check /orders before retrying a trade."
+
 # Telegram API calls occasionally cannot open a connection at all
 # (httpx.ConnectTimeout → telegram.error.TimedOut) while the long-poll
 # connection keeps working, so the bot looks online but every fresh API
@@ -77,7 +79,7 @@ async def ensure_private(update) -> bool:
     chat = update.effective_chat
     if chat is None or chat.type != "private":
         if update.effective_message:
-            await reply(update, "🚫 Private chat only. Open the bot directly to continue.")
+            await reply(update, "<b>PRIVATE CHAT</b>\nOpen this bot in a direct message.")
         return False
     return True
 
@@ -104,21 +106,21 @@ def command(name: str, *, gated: bool = True, needs_wallet: bool = False):
                 user = update.effective_user
                 svc = services(context)
                 if user and not svc.limiter.allow(f"cmd:{user.id}", svc.cfg.commands_per_30s, 30):
-                    await reply(update, "⏳ Rate limit reached. Please wait a moment.")
+                    await reply(update, "<b>PLEASE WAIT</b>\nToo many requests. Try again in a moment.")
                     return
                 if gated and not await ensure_subscribed(update, context):
                     return
                 if needs_wallet:
                     row = await svc.db.get_user(str(user.id))
                     if not row or not row.get("wallet_address"):
-                        await reply(update, "💼 No wallet connected yet. Complete /start to create one.")
+                        await reply(update, "<b>NO WALLET</b>\nComplete /start to create one.")
                         return
                 await func(update, context)
             except UserFacingError as exc:
                 await _safe_reply(update, str(exc))
             except Exception:
                 logger.exception("command %s failed", name)
-                await _safe_reply(update, "⚠️ Unexpected error. Please try again shortly. Check /orders before retrying a trade.")
+                await _safe_reply(update, UNEXPECTED)
 
         return wrapper
 
@@ -141,7 +143,7 @@ def callback_guard(func):
             await _safe_reply(update, str(exc))
         except Exception:
             logger.exception("callback handler %s failed", func.__name__)
-            await _safe_reply(update, "⚠️ Unexpected error. Please try again shortly. Check /orders before retrying a trade.")
+            await _safe_reply(update, UNEXPECTED)
 
     return wrapper
 

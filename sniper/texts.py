@@ -2,117 +2,98 @@ from __future__ import annotations
 
 from sniper.ui import info
 
-# Telegram chat is the product interface: copy is concise, status-led and
-# Maestro-inspired. Emoji stay on headers, key status lines and footers.
+# Telegram is the product. Copy stays short, status-led, and free of decoration.
 
-START_INTRO = """🎯 <b>SOLANA SNIPER</b>
-
-Professional trading terminal for Solana.
+START_INTRO = """<b>SOLANA SNIPER</b>
+<i>Private terminal. The bot acts only on tokens you submit.</i>
 
 <b>TRADING</b>
-• Market buy and sell with a live quote
-• Token panels with real-time market data
-• Limit orders and trailing stops
+Market buy and sell, with a live quote before anything is signed.
+Limit orders and trailing stops from the same panels.
 
 <b>AUTOMATION</b>
-• Autosnipe for tokens on your watchlist
-• Optional auto-buy on paste
-• Optional TP/SL auto-sell
-
-<b>PORTFOLIO</b>
-• Balances, holdings and realised P&L
-• Full trade history
-• SOL withdrawals
-
-<b>RISK CONTROLS</b>
-• Token safety checks
-• Per-trade and daily spend limits
-• Slippage and price-impact limits
-
-⚠️ The bot does not scan the market. It only acts on tokens you submit or add yourself.
-
-""" + info("Send /help for commands and operating details.")
-
-HELP = """📋 <b>COMMANDS</b>
-
-<b>TRADING</b>
-/buy · open the buy flow
-/sell · choose a holding or enter a mint
-/scan · run a token safety report
-/triggers · manage limit orders and trailing stops
-/withdraw · prepare a SOL withdrawal
-
-<b>PORTFOLIO</b>
-/wallet · address, balance and controls
-/summary · holdings with USD valuations
-/orders · trade and withdrawal history
-
-<b>AUTOMATION</b>
-/autosnipe · watchlist and automation switches
-/config · trading parameters
+Watchlist entries, optional buy on paste, and optional take-profit or stop-loss.
 
 <b>ACCOUNT</b>
-/stop · pause new trading and withdrawals
+Wallet, portfolio, history, withdrawals, and spend limits.
+
+""" + info("Join both channels below, then verify access.")
+
+HELP = """<b>COMMANDS</b>
+<i>Open a command, then answer the prompt. Arguments are optional.</i>
+
+<b>TRADING</b>
+/buy · buy panel
+/sell · holdings, then a sell panel
+/scan · token safety report
+/triggers · limit orders and trailing stops
+/withdraw · SOL withdrawal
+
+<b>PORTFOLIO</b>
+/wallet · address, balance, controls
+/summary · holdings and value
+/orders · trades and withdrawals
+
+<b>AUTOMATION</b>
+/autosnipe · watchlist and switches
+/config · limits and execution
+
+<b>ACCOUNT</b>
+/stop · pause new trading
 /resume · restore trading
-/import · replace the connected wallet
-/cancel · cancel the active input flow
+/import · replace the wallet
+/cancel · leave the current prompt
 
-⚡ <b>QUICK ACCESS</b>
-Paste a token mint or a supported token/pair link to open its panel.
+<b>QUICK OPEN</b>
+Paste a mint, or a supported token or pair link, to open its panel.
 
-Select a topic below for details."""
+""" + info("Choose a topic below for a short guide.")
 
 HELP_SECTIONS = {
-    "autosnipe": """🎯 <b>AUTOSNIPE</b>
+    "autosnipe": """<b>AUTOSNIPE</b>
+<i>Watches only tokens you add. It does not scan the market.</i>
 
-Autosnipe watches only the tokens you add to your watchlist. It does not scan the market.
+<b>STEPS</b>
+1. Add a mint you trust.
+2. Set the SOL amount.
+3. Leave Autosnipe on.
+4. A live market runs the safety checks.
+5. A buy is queued only if every check and limit passes.
 
-<b>HOW IT WORKS</b>
-1. Add a token mint you trust.
-2. Set the SOL amount per entry.
-3. Enable Autosnipe.
-4. When a live market appears, safety checks run.
-5. A buy is queued only if all checks and limits pass.
+<b>OTHER SWITCHES</b>
+Auto-buy on paste buys a live token you paste, with no confirmation.
+Take-profit / stop-loss sells a position when your level is reached.
 
-<b>RELATED SWITCHES</b>
-• Auto-buy on paste · buys a live token you paste, without confirmation
-• TP/SL auto-sell · auto-exits positions at your levels
+""" + info("Auto-buy skips confirmation and the safety gate. Review limits in /config. /stop pauses new activity."),
+    "safety": """<b>TOKEN SAFETY</b>
+<i>A point-in-time check. Not a guarantee.</i>
 
-⚠️ Auto-buy bypasses manual confirmation and the Autosnipe safety gate. Enable it only if you accept that.
+The report can include freeze and mint authority, liquidity, honeypot flags, and external risk notes.
 
-""" + info("Review limits with /config · pause everything with /stop."),
-    "safety": """🛡️ <b>TOKEN SAFETY</b>
+Autosnipe will not buy when a critical check fails.
+A manual trade still shows the report. The decision stays yours.
 
-A safety report may include:
-• Freeze and mint authority
-• Liquidity and pool data
-• Honeypot indicators
-• External risk flags
+Missing data does not mean a token is safe.
 
-🚫 Autosnipe is blocked when a critical check fails. Manual trades show the report; the decision stays yours.
+""" + info("Use /scan and send a mint."),
+    "security": """<b>WALLET SECURITY</b>
+<i>Treat the connected wallet as a trading wallet only.</i>
 
-⚠️ A report is a point-in-time assessment, not a guarantee. Missing data does not mean a token is safe.
+Keys are encrypted at rest and are never shown in chat.
+Import messages are deleted immediately when Telegram allows it.
+Trade records include signatures you can verify yourself.
+/stop blocks new requests. A transaction already sent may still settle.
 
-""" + info("Use /scan with a token mint to request a report."),
-    "security": """🔐 <b>WALLET SECURITY</b>
-
-• Private keys are encrypted at rest and never displayed in chat.
-• Submitted import messages are deleted immediately where Telegram permits.
-• Use a dedicated wallet funded only for trading.
-• Trade records include signatures for independent verification.
-• /stop blocks new requests; transactions already sent may still settle.
-
-🚨 Never share your recovery phrase or private key with anyone. The bot team will never ask for it outside the wallet-import flow.""",
+Never share a recovery phrase or private key. It is requested only inside /import.""",
 }
 
-HELP_MENU = "📚 <b>HELP</b>\nSelect a topic to continue."
+HELP_MENU = "<b>HELP</b>\n" + info("Choose a topic.")
 
-IMPORT_WARNING = """🔐 <b>WALLET IMPORT</b>
+IMPORT_WARNING = """<b>WALLET IMPORT</b>
+<i>This replaces the wallet connected to this account.</i>
 
-You are about to replace the wallet connected to this bot.
+Use a dedicated trading wallet. Fund only what you are prepared to trade.
 
-⚠️ Use a dedicated trading wallet and confirm you accept the risks.
+After you continue, send the private key in the next message. It is deleted at once. If Telegram refuses, delete it yourself.
 
-After you continue, send the private key in your next message. The bot deletes that message immediately; if Telegram refuses, delete it yourself at once.
-
-""" + info("The import flow expires automatically · send /cancel to abort.")
+""" + info("The prompt expires on its own. /cancel leaves the current wallet unchanged.")

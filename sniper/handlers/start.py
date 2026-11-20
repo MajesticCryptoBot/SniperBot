@@ -15,7 +15,7 @@ from sniper.handlers.common import (
 )
 from sniper.keyboards import help_menu_keyboard, help_topic_keyboard, join_keyboard
 from sniper.texts import HELP, HELP_MENU, HELP_SECTIONS, START_INTRO
-from sniper.ui import esc, info
+from sniper.ui import info, mono
 
 logger = logging.getLogger(__name__)
 
@@ -51,20 +51,19 @@ async def _onboard(update, context, *, already_member: bool) -> None:
         )
         created = True
         logger.info("wallet created for a new user")
-    header = "🔓 <b>ACCESS VERIFIED</b>" if already_member else "✅ <b>ACCOUNT READY</b>"
+    header = "<b>ACCESS VERIFIED</b>" if already_member else "<b>ACCOUNT READY</b>"
     lines = [
         header,
+        info("Wallet ready for this account." if not created else "A new trading wallet was created."),
         "",
-        "💼 Wallet",
-        esc(wallet),
+        "<b>WALLET</b>",
+        mono(wallet),
         "",
-        "Created." if created else "Loaded.",
-        "",
-        "<b>NEXT STEPS</b>",
-        "1. 💰 Fund the wallet with SOL",
-        "2. 🛒 /buy or 💸 /sell to trade",
-        "3. 💼 /wallet for balance and controls",
-        "4. 📋 /help for all commands",
+        "<b>NEXT</b>",
+        "1. Fund the wallet with SOL",
+        "2. /buy or /sell to trade",
+        "3. /wallet for balance and controls",
+        "4. /help for commands",
     ]
     await reply(update, "\n".join(lines))
 
@@ -111,8 +110,8 @@ async def on_check_sub(update, context) -> None:
     svc = services(context)
     user = update.effective_user
     if user and not svc.limiter.allow(f"sub:{user.id}", 6, 60):
-        await best_effort_answer(query, "⏳ Please wait a moment before checking again.")
+        await best_effort_answer(query, "Please wait a moment, then verify again.")
         return
-    await best_effort_answer(query, "🔎 Checking membership…")
+    await best_effort_answer(query, "Checking membership.")
     if await ensure_subscribed(update, context, force=True):
         await _onboard(update, context, already_member=True)

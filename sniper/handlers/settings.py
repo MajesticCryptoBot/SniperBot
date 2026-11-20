@@ -16,7 +16,7 @@ from sniper.handlers.common import (
 )
 from sniper.keyboards import autosnipe_keyboard, config_keyboard
 from sniper.settings_logic import SETTING_HELP, SETTING_NAMES, validate_setting
-from sniper.ui import esc, info, onoff
+from sniper.ui import card, esc, info, onoff
 
 logger = logging.getLogger(__name__)
 
@@ -24,21 +24,30 @@ logger = logging.getLogger(__name__)
 def _format_settings(svc, settings) -> str:
     return "\n".join(
         [
-            "⚙️ <b>TRADING CONFIGURATION</b>",
+            "<b>TRADING CONFIGURATION</b>",
+            info("Limits and automation for this account."),
             "",
             "<b>EXECUTION</b>",
-            f"Slippage: {int(settings['slippage_bps']) / 100:.2f}%",
-            f"Priority fee: {int(settings['priority_fee_lamports']):,} lamports",
-            f"Max per trade: {float(settings['max_sol_per_trade']):.4f} SOL",
-            f"Daily limit: {float(settings['daily_spend_limit_sol']):.4f} SOL",
-            f"Impact cap: {float(settings['max_price_impact_pct']):.2f}%",
+            card(
+                [
+                    f"Slippage: {int(settings['slippage_bps']) / 100:.2f}%",
+                    f"Priority fee: {int(settings['priority_fee_lamports']):,} lamports",
+                    f"Max per trade: {float(settings['max_sol_per_trade']):.4f} SOL",
+                    f"Daily limit: {float(settings['daily_spend_limit_sol']):.4f} SOL",
+                    f"Impact cap: {float(settings['max_price_impact_pct']):.2f}%",
+                ]
+            ),
             "",
             "<b>AUTOMATION</b>",
-            f"Autosnipe: {onoff(settings['autosnipe_enabled'])}",
-            f"  Entry: {float(settings['autosnipe_amount_sol']):.4f} SOL · impact cap {float(settings['autosnipe_max_price_impact_pct']):.2f}%",
-            f"Auto-buy: {onoff(settings.get('auto_buy_enabled'))} · {float(settings.get('auto_buy_amount_sol') or 0):.4f} SOL",
-            f"TP/SL: {onoff(settings.get('tp_sl_enabled'))}",
-            f"  TP +{float(settings.get('take_profit_pct') or 0):.2f}% · SL {float(settings.get('stop_loss_pct') or 0):.2f}%",
+            card(
+                [
+                    f"Autosnipe: {onoff(settings['autosnipe_enabled'])}",
+                    f"Entry: {float(settings['autosnipe_amount_sol']):.4f} SOL · impact {float(settings['autosnipe_max_price_impact_pct']):.2f}%",
+                    f"Auto-buy: {onoff(settings.get('auto_buy_enabled'))} · {float(settings.get('auto_buy_amount_sol') or 0):.4f} SOL",
+                    f"TP/SL: {onoff(settings.get('tp_sl_enabled'))}",
+                    f"TP +{float(settings.get('take_profit_pct') or 0):.2f}% · SL {float(settings.get('stop_loss_pct') or 0):.2f}%",
+                ]
+            ),
             "",
             SETTING_HELP,
             "",
@@ -70,10 +79,10 @@ async def apply_config(update, context, svc, name: str, raw_value: str) -> None:
     except AmountError as exc:
         raise UserFacingError(str(exc)) from exc
     if column == "autosnipe_amount_sol" and float(value) > float(settings["max_sol_per_trade"]):
-        raise UserFacingError("⚠️ Snipe amount exceeds the per-trade maximum. Raise max_sol first or lower the amount.")
+        raise UserFacingError("Snipe amount is above the per-trade maximum. Raise max per trade, or lower the amount.")
     await svc.db.update_setting(user_id, column, value)
     settings = await svc.db.get_settings(user_id)
-    await reply(update, "✅ <b>SETTING UPDATED</b>\n\n" + _format_settings(svc, settings))
+    await reply(update, "<b>SETTING UPDATED</b>\n\n" + _format_settings(svc, settings))
 
 
 @callback_guard
@@ -89,13 +98,13 @@ async def on_config_callback(update, context) -> None:
     svc = services(context)
     user = update.effective_user
     if user and not svc.limiter.allow(f"cmd:{user.id}", svc.cfg.commands_per_30s, 30):
-        await reply(update, "⏳ Rate limit reached. Please wait a moment.")
+        await reply(update, "<b>PLEASE WAIT</b>\nToo many requests. Try again in a moment.")
         return
     if not await ensure_subscribed(update, context):
         return
     if name == "cancel":
         flow = flows.cancel(context)
-        await reply(update, "✅ Input flow cancelled." if flow else "No active input flow.")
+        await reply(update, "<b>CANCELLED</b>\nInput flow cancelled." if flow else "No active input flow.")
         return
     if name not in SETTING_NAMES:
         return
@@ -107,10 +116,10 @@ async def on_config_callback(update, context) -> None:
 # ---------------------------------------------------------------------------
 
 AUTOSNIPE_MINT_PROMPT = (
-    "🎯 <b>ADD TO AUTOSNIPE</b>\n\nSend the token mint address.\n\n"
-    + info("Only add tokens from sources you trust · a buy fires when a live market appears and checks pass.")
+    "<b>ADD TO AUTOSNIPE</b>\n\nSend the token mint address.\n\n"
+    + info("A buy fires only after a live market appears and the checks pass.")
 )
-AUTOSNIPE_AMOUNT_PROMPT = "💰 <b>ENTRY AMOUNT</b>\n\nSOL allocated to this watchlist entry? For example 0.25."
+AUTOSNIPE_AMOUNT_PROMPT = "<b>ENTRY AMOUNT</b>\n\nSOL for this watchlist entry. Example: 0.25."
 
 
 
@@ -137,29 +146,30 @@ async def autosnipe(update, context) -> None:
 
 
 def _autosnipe_overview(settings, entries: list[dict]) -> str:
-    lines = ["🎯 <b>AUTOSNIPE</b>", "", "<b>WATCHLIST</b>"]
-    status_label = {"active": "waiting", "triggered": "buy queued", "aborted": "blocked"}
+    lines = ["<b>AUTOSNIPE</b>", info("Watchlist only. No market scan."), "", "<b>WATCHLIST</b>"]
+    status_label = {"active": "waiting", "triggered": "queued", "aborted": "blocked"}
+    rows = []
     if entries:
         for index, entry in enumerate(entries, start=1):
             status = status_label.get(entry["status"], str(entry["status"]))
             line = f"{index:02d}  {entry['token_mint'][:8]}… · {float(entry['amount_sol']):.4f} SOL · {status}"
             if entry["status"] == "aborted" and entry.get("trigger_error"):
-                line += f"\n     ⚠️ {esc(entry['trigger_error'][:100])}"
-            lines.append(line)
+                line += f"\n{esc(entry['trigger_error'][:100])}"
+            rows.append(line)
     else:
-        lines.append("Watchlist empty. Add a mint below.")
-    lines += [
-        "", "<b>SWITCHES</b>",
+        rows.append("Empty. Add a mint below.")
+    lines.append(card(rows))
+    switches = [
         f"Autosnipe: {onoff(settings['autosnipe_enabled'])}",
         f"Impact cap: {float(settings['autosnipe_max_price_impact_pct']):.2f}%",
         f"Auto-buy on paste: {onoff(settings.get('auto_buy_enabled'))}",
     ]
     if settings.get("auto_buy_enabled"):
-        lines.append(f"  Amount: {float(settings.get('auto_buy_amount_sol') or 0):.4f} SOL")
-    lines.append(f"TP/SL auto-sell: {onoff(settings.get('tp_sl_enabled'))}")
+        switches.append(f"Amount: {float(settings.get('auto_buy_amount_sol') or 0):.4f} SOL")
+    switches.append(f"TP/SL auto-sell: {onoff(settings.get('tp_sl_enabled'))}")
     if settings.get("tp_sl_enabled"):
-        lines.append(f"  TP +{float(settings.get('take_profit_pct') or 0):.1f}% · SL {float(settings.get('stop_loss_pct') or 0):.1f}%")
-    lines += ["", info("/stop pauses new trading activity at any time.")]
+        switches.append(f"TP +{float(settings.get('take_profit_pct') or 0):.1f}% · SL {float(settings.get('stop_loss_pct') or 0):.1f}%")
+    lines += ["", "<b>SWITCHES</b>", card(switches), "", info("/stop pauses new trading.")]
     return "\n".join(lines)
 
 
@@ -167,26 +177,26 @@ async def add_to_watchlist(update, context, svc, mint: str, amount_sol: float) -
     user_id = str(update.effective_user.id)
     user = await svc.db.get_user(user_id)
     if user["trading_paused"]:
-        raise UserFacingError("🚫 Trading paused. Use /resume before enabling automation.")
+        raise UserFacingError("Trading is paused. Use /resume before enabling automation.")
     if not svc.cfg.is_mainnet:
         logger.warning("watchlist add refused: network is %s", svc.cfg.network)
-        raise UserFacingError("🚫 Autosnipe is unavailable on the current network configuration.")
+        raise UserFacingError("Autosnipe is unavailable on the current network configuration.")
     settings = await svc.db.get_settings(user_id)
     if amount_sol > float(settings["max_sol_per_trade"]):
-        raise UserFacingError("⚠️ Amount exceeds your per-trade maximum.")
+        raise UserFacingError("Amount is above your per-trade maximum.")
     count = await svc.db.count_watch_for(user_id)
     if count >= svc.cfg.max_watch_per_user:
-        raise UserFacingError(f"⚠️ Watchlist full ({svc.cfg.max_watch_per_user}). Remove an entry first.")
+        raise UserFacingError(f"Watchlist is full ({svc.cfg.max_watch_per_user}). Remove an entry first.")
     watch_id, action = await svc.db.add_watch_entry(user_id, mint, amount_sol)
     verb = {
-        "added": "✅ <b>WATCHLIST ENTRY ADDED</b>",
-        "updated": "✅ <b>WATCHLIST ENTRY UPDATED</b>",
-        "reactivated": "✅ <b>WATCHLIST ENTRY REACTIVATED</b>",
+        "added": "<b>WATCHLIST ENTRY ADDED</b>",
+        "updated": "<b>WATCHLIST ENTRY UPDATED</b>",
+        "reactivated": "<b>WATCHLIST ENTRY REACTIVATED</b>",
     }[action]
     switch_note = ""
     if int(settings["autosnipe_enabled"]) == 0:
         await svc.db.update_setting(user_id, "autosnipe_enabled", 1)
-        switch_note = "\n🎯 Autosnipe was enabled automatically."
+        switch_note = "\nAutosnipe is now on."
     await reply(
         update,
         "\n".join(
@@ -194,7 +204,7 @@ async def add_to_watchlist(update, context, svc, mint: str, amount_sol: float) -
                 verb,
                 "",
                 f"Mint: {esc(mint)}",
-                f"Allocation: {amount_sol:.4f} SOL",
+                f"Amount: {amount_sol:.4f} SOL",
                 f"Reference: {watch_id}",
                 switch_note,
             ]
@@ -208,17 +218,17 @@ async def toggle_autosnipe(update, context, svc) -> None:
     settings = await svc.db.get_settings(user_id)
     if settings["autosnipe_enabled"]:
         await svc.db.update_setting(user_id, "autosnipe_enabled", 0)
-        await reply(update, "🎯 <b>AUTOSNIPE DISABLED</b>\nWatchlist entries will not trigger buys.")
+        await reply(update, "<b>AUTOSNIPE OFF</b>\nWatchlist entries will not buy.")
         return
     if user["trading_paused"]:
         raise UserFacingError("Trading is paused for this wallet. Use /resume before enabling automation.")
     if not svc.cfg.is_mainnet:
         logger.warning("autosnipe enable refused: network is %s", svc.cfg.network)
-        raise UserFacingError("🚫 Autosnipe is unavailable on the current network configuration.")
+        raise UserFacingError("Autosnipe is unavailable on the current network configuration.")
     await svc.db.update_setting(user_id, "autosnipe_enabled", 1)
     count = await svc.db.count_watch_for(user_id)
-    note = "Your watchlist is empty. Add a token before expecting an automated entry." if count == 0 else f"Monitoring {count} watchlist {'entry' if count == 1 else 'entries'}."
-    await reply(update, f"🎯 <b>AUTOSNIPE ENABLED</b>\n\n{esc(note)}")
+    note = "The watchlist is empty. Add a token before expecting an entry." if count == 0 else f"Watching {count} {'entry' if count == 1 else 'entries'}."
+    await reply(update, f"<b>AUTOSNIPE ON</b>\n\n{esc(note)}")
 
 
 @callback_guard
@@ -234,7 +244,7 @@ async def on_snipe_callback(update, context) -> None:
     svc = services(context)
     user = update.effective_user
     if user and not svc.limiter.allow(f"cmd:{user.id}", svc.cfg.commands_per_30s, 30):
-        await reply(update, "Please wait a moment before making another change.")
+        await reply(update, "<b>PLEASE WAIT</b>\nTry again in a moment.")
         return
     if not await ensure_subscribed(update, context):
         return
@@ -253,7 +263,7 @@ async def on_snipe_callback(update, context) -> None:
         return
     if parts[1] == "remove" and len(parts) == 3 and parts[2].isdigit():
         removed = await svc.db.remove_watch_entry(int(parts[2]), user_id)
-        await reply(update, "✅ Watchlist entry removed." if removed else "That watchlist entry is no longer active.")
+        await reply(update, "<b>REMOVED</b>\nWatchlist entry removed." if removed else "That entry is no longer active.")
         return
 
 
@@ -263,19 +273,19 @@ async def toggle_auto_buy(update, context, svc) -> None:
     settings = await svc.db.get_settings(user_id)
     if settings.get("auto_buy_enabled"):
         await svc.db.update_setting(user_id, "auto_buy_enabled", 0)
-        await reply(update, "🤖 <b>AUTO-BUY DISABLED</b>\nPasted tokens open the standard token panel.")
+        await reply(update, "<b>AUTO-BUY OFF</b>\nA pasted token opens its panel.")
         return
     if user["trading_paused"]:
         raise UserFacingError("Trading is paused for this wallet. Use /resume before enabling automation.")
     if not svc.cfg.is_mainnet:
         logger.warning("auto-buy enable refused: network is %s", svc.cfg.network)
-        raise UserFacingError("🚫 Auto-buy is unavailable on the current network configuration.")
+        raise UserFacingError("Auto-buy is unavailable on the current network configuration.")
     await svc.db.update_setting(user_id, "auto_buy_enabled", 1)
     await reply(
         update,
-        "🤖 <b>AUTO-BUY ENABLED</b>\n\n"
+        "<b>AUTO-BUY ON</b>\n\n"
         f"Amount: {float(settings.get('auto_buy_amount_sol') or 0):.4f} SOL\n\n"
-        + info("A pasted token with a live market is bought automatically · skips confirmation and the safety gate."),
+        + info("A pasted token with a live market is bought at once. Confirmation and the safety gate are skipped."),
     )
 
 
@@ -285,20 +295,20 @@ async def toggle_tp_sl(update, context, svc) -> None:
     settings = await svc.db.get_settings(user_id)
     if settings.get("tp_sl_enabled"):
         await svc.db.update_setting(user_id, "tp_sl_enabled", 0)
-        await reply(update, "💰 <b>TP/SL AUTO-SELL DISABLED</b>\nAutomatic exits are paused.")
+        await reply(update, "<b>TP/SL OFF</b>\nAutomatic exits are paused.")
         return
     if user["trading_paused"]:
         raise UserFacingError("Trading is paused for this wallet. Use /resume before enabling automation.")
     if not svc.cfg.is_mainnet:
         logger.warning("tp/sl enable refused: network is %s", svc.cfg.network)
-        raise UserFacingError("🚫 TP/SL auto-sell is unavailable on the current network configuration.")
+        raise UserFacingError("TP/SL auto-sell is unavailable on the current network configuration.")
     await svc.db.update_setting(user_id, "tp_sl_enabled", 1)
     await reply(
         update,
-        "💰 <b>TP/SL AUTO-SELL ENABLED</b>\n\n"
+        "<b>TP/SL ON</b>\n\n"
         f"Take-profit: +{float(settings.get('take_profit_pct') or 0):.1f}%\n"
         f"Stop-loss: {float(settings.get('stop_loss_pct') or 0):.1f}%\n\n"
-        + info("The full eligible position sells when a level is reached."),
+        + info("The full eligible position is sold when a level is reached."),
     )
 
 
@@ -308,9 +318,9 @@ async def stop(update, context) -> None:
     await svc.db.set_paused(str(update.effective_user.id), True)
     await reply(
         update,
-        "🚫 <b>TRADING PAUSED</b>\n\n"
-        "New buys, sells, withdrawals and automation are blocked.\n\n"
-        + info("Transactions already submitted may still settle."),
+        "<b>TRADING PAUSED</b>\n\n"
+        "New buys, sells, withdrawals, and automation are blocked.\n\n"
+        + info("A transaction already submitted may still settle."),
     )
 
 
@@ -320,8 +330,8 @@ async def resume(update, context) -> None:
     await svc.db.set_paused(str(update.effective_user.id), False)
     await reply(
         update,
-        "▶️ <b>TRADING RESUMED</b>\n\n"
-        + info("Autosnipe and auto-buy keep their previous settings · review /autosnipe."),
+        "<b>TRADING RESUMED</b>\n\n"
+        + info("Autosnipe and auto-buy keep their previous state. Review /autosnipe."),
     )
 
 
@@ -331,12 +341,12 @@ def _register_flows() -> None:
         [
             flows.Step(
                 "name",
-                lambda data: f"⚙️ <b>CONFIGURATION</b>\n\nWhich setting?\n\nOptions: {', '.join(SETTING_NAMES)}",
+                lambda data: f"<b>CONFIGURATION</b>\n\nWhich setting?\n\n{', '.join(SETTING_NAMES)}",
                 flows.parse_setting_name,
             ),
             flows.Step(
                 "value",
-                lambda data: f"⚙️ <b>UPDATE SETTING</b>\n\nSend the new value for “{esc(data['name'])}”.\n\n{info('Send /cancel to keep the current value.')}",
+                lambda data: f"<b>UPDATE SETTING</b>\n\nSend the new value for “{esc(data['name'])}”.\n\n{info('Send /cancel to keep the current value.')}",
                 None,
             ),
         ],

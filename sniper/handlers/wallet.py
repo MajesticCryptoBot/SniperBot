@@ -13,7 +13,7 @@ from sniper.handlers.settings import config_command
 from sniper.keyboards import import_confirm_keyboard, import_go_keyboard, wallet_keyboard
 from sniper.signing import parse_keypair
 from sniper.texts import IMPORT_WARNING
-from sniper.ui import esc, info
+from sniper.ui import card, esc, info, mono
 
 logger = logging.getLogger(__name__)
 
@@ -36,18 +36,23 @@ async def wallet(update, context) -> None:
             balance = str(exc)
         else:
             balance = "Temporarily unavailable"
-    paused = "🟢 ACTIVE" if not row["trading_paused"] else "🔴 PAUSED"
+    paused = "ACTIVE" if not row["trading_paused"] else "PAUSED"
     await reply(
         update,
         "\n".join(
             [
-                "💼 <b>WALLET</b>",
+                "<b>WALLET</b>",
+                info("Connected trading wallet."),
                 "",
-                "Address",
-                esc(row["wallet_address"]),
-                "",
-                f"💰 Balance: {esc(balance)}",
-                f"Trading: {paused}",
+                card(
+                    [
+                        "Address",
+                        mono(row["wallet_address"]),
+                        "",
+                        f"Balance: {esc(balance)}",
+                        f"Trading: {paused}",
+                    ]
+                ),
             ]
         ),
         wallet_keyboard(),
@@ -64,7 +69,7 @@ async def on_wallet_callback(update, context) -> None:
     svc = services(context)
     user = update.effective_user
     if user and not svc.limiter.allow(f"cmd:{user.id}", svc.cfg.commands_per_30s, 30):
-        await reply(update, "⏳ Rate limit reached. Please wait a moment.")
+        await reply(update, "<b>PLEASE WAIT</b>\nToo many requests. Try again in a moment.")
         return
     if not await ensure_subscribed(update, context):
         return
@@ -87,7 +92,7 @@ async def import_start(update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     row = await services(context).db.get_user(str(update.effective_user.id))
     if not row:
-        await reply(update, "💼 No wallet connected yet. Complete /start first.")
+        await reply(update, "<b>NO WALLET</b>\nComplete /start first.")
         return ConversationHandler.END
     context.user_data["import_started"] = time.monotonic()
     await reply(update, IMPORT_WARNING, import_go_keyboard())
@@ -101,8 +106,8 @@ async def import_ack(update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     await reply(
         update,
-        "🔐 <b>WALLET IMPORT</b>\n\nSend the private key in your next message.\n\n"
-        + info("The bot deletes it immediately · if Telegram refuses, delete it yourself at once · /cancel aborts."),
+        "<b>SEND KEY</b>\n\nSend the private key in the next message.\n\n"
+        + info("It is deleted immediately. If Telegram refuses, delete it yourself. /cancel aborts."),
     )
     return WAIT_KEY
 
@@ -113,16 +118,16 @@ async def import_key(update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.delete()
     except Exception:
-        await reply(update, "🚨 Telegram refused deletion. Remove that message from the chat immediately.")
+        await reply(update, "<b>DELETE THAT MESSAGE</b>\nTelegram refused deletion. Remove it from the chat now.")
     if time.monotonic() - started > IMPORT_TTL:
         _clear_import(context)
-        await reply(update, "⌛ Import session expired. No changes were made.")
+        await reply(update, "<b>IMPORT EXPIRED</b>\nNo changes were made.")
         return ConversationHandler.END
     try:
         keypair = parse_keypair(raw)
     except ValueError:
         _clear_import(context)
-        await reply(update, "❌ Not a valid private key. No changes were made.")
+        await reply(update, "<b>NOT A PRIVATE KEY</b>\nNo changes were made.")
         return ConversationHandler.END
     finally:
         raw = ""
@@ -133,12 +138,15 @@ async def import_key(update, context: ContextTypes.DEFAULT_TYPE):
         update,
         "\n".join(
             [
-                "🔐 <b>CONFIRM REPLACEMENT</b>",
+                "<b>CONFIRM REPLACEMENT</b>",
+                info("The current wallet will be replaced."),
                 "",
-                "New address",
-                esc(context.user_data["import_pub"]),
-                "",
-                info("Confirming replaces the currently connected wallet."),
+                card(
+                    [
+                        "New address",
+                        mono(context.user_data["import_pub"]),
+                    ]
+                ),
             ]
         ),
         import_confirm_keyboard(),
@@ -154,7 +162,7 @@ async def import_confirm(update, context: ContextTypes.DEFAULT_TYPE):
     pubkey = context.user_data.get("import_pub")
     if data == "import_no" or not secret or not pubkey:
         _clear_import(context)
-        await reply(update, "❌ Import cancelled. Existing wallet unchanged.")
+        await reply(update, "<b>IMPORT CANCELLED</b>\nThe existing wallet is unchanged.")
         return ConversationHandler.END
     if not await ensure_subscribed(update, context):
         _clear_import(context)
@@ -166,14 +174,14 @@ async def import_confirm(update, context: ContextTypes.DEFAULT_TYPE):
     logger.info("wallet imported user=%s", update.effective_user.id)
     await reply(
         update,
-        f"✅ <b>WALLET REPLACED</b>\n\nConnected: {esc(pubkey)}",
+        "<b>WALLET REPLACED</b>\n\n" + card([f"Connected: {esc(pubkey)}"]),
     )
     return ConversationHandler.END
 
 
 async def import_cancel(update, context: ContextTypes.DEFAULT_TYPE):
     _clear_import(context)
-    await reply(update, "❌ Import cancelled. Existing wallet unchanged.")
+    await reply(update, "<b>IMPORT CANCELLED</b>\nThe existing wallet is unchanged.")
     return ConversationHandler.END
 
 

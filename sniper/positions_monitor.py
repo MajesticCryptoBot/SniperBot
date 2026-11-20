@@ -158,10 +158,10 @@ class PositionMonitor:
                 int(row.get("chat_id") or row["telegram_id"]),
                 "\n".join(
                     [
-                        "🚫 <b>AUTOMATIC EXIT NOT QUEUED</b>\nThe TP/SL sell was rejected and the position has been disarmed.",
+                        "<b>EXIT NOT QUEUED</b>\nThe take-profit or stop-loss sell was rejected. The position is disarmed.",
                         f"Reason: {esc(reason)}",
                         "",
-                        info("Sell manually if required · a new buy re-arms the levels."),
+                        info("Sell manually if you still want out. A new buy arms the levels again."),
                     ]
                 ),
             )

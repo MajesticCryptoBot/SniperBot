@@ -58,20 +58,20 @@ def spend_decision(
     absolute_max_sol: float,
 ) -> tuple[bool, str]:
     if global_paused:
-        return False, "Trading is temporarily paused. Please try again later."
+        return False, "Trading is paused. Try again later."
     if user_paused:
-        return False, "Trading is paused for this account. Use /resume to allow new requests. Review /autosnipe before relying on automated entries."
+        return False, "Trading is paused for this account. Use /resume before new requests. Review /autosnipe before you rely on automation."
     if amount_sol <= 0:
         return False, "Amount must be greater than zero."
     if amount_sol > absolute_max_sol:
         return False, f"Amount exceeds the absolute maximum of {absolute_max_sol:g} SOL."
     if amount_sol > max_per_trade + 1e-12:
-        return False, f"Requested amount ({amount_sol:.6f} SOL) exceeds the per-trade limit ({max_per_trade:.6f} SOL). Update /config max_sol or reduce the amount."
+        return False, f"Requested amount ({amount_sol:.6f} SOL) exceeds the per-trade limit ({max_per_trade:.6f} SOL). Change max per trade in /config, or reduce the amount."
     if spent_today + amount_sol > daily_limit + 1e-9:
         return False, (
-            f"This trade would spend {spent_today + amount_sol:.6f} SOL today, "
-            f"above your daily limit of {daily_limit:.6f} SOL (already reserved or spent: {spent_today:.6f})."
+            f"This would spend {spent_today + amount_sol:.6f} SOL today, "
+            f"above the daily limit of {daily_limit:.6f} SOL (already used: {spent_today:.6f})."
         )
     if trades_last_hour >= max_trades_per_hour:
-        return False, f"Hourly trade limit reached ({max_trades_per_hour} per account). Wait before submitting another trade."
+        return False, f"Hourly trade limit reached ({max_trades_per_hour} per account). Wait before the next trade."
     return True, ""

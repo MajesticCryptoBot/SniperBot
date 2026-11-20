@@ -173,4 +173,4 @@ async def test_check_sub_rate_limited_answers_best_effort():
     update = make_update(query=query)
     await on_check_sub(update, FakeContext(FakeSvc(allow=False)))
     # first attempt failed, the tg_call retry delivered the toast
-    assert query.answered == ["⏳ Please wait a moment before checking again."] * 2
+    assert query.answered == ["Please wait a moment, then verify again."] * 2

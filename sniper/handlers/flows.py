@@ -83,7 +83,7 @@ async def begin(update, context, flow: str, *, prefill: dict | None = None) -> N
     """
     spec = FLOWS.get(flow)
     if spec is None:
-        raise UserFacingError("❓ Unknown action. Send /help for the available commands.")
+        raise UserFacingError("Unknown action. Send /help for the commands.")
     data: dict = {}
     notes: list[str] = []
     for key, raw in (prefill or {}).items():
@@ -118,12 +118,12 @@ async def handle(update, context, text: str) -> bool:
         return False
     if time.monotonic() - state.get("ts", 0) > FLOW_TTL:
         context.user_data.pop(STATE_KEY, None)
-        await reply(update, "⌛ Input flow expired. Send the command again.")
+        await reply(update, "<b>EXPIRED</b>\nThis input has expired. Send the command again.")
         return True
     user = update.effective_user
     svc = services(context)
     if user and not svc.limiter.allow(f"cmd:{user.id}", svc.cfg.commands_per_30s, 30):
-        await reply(update, "⏳ Rate limit reached. Please wait a moment.")
+        await reply(update, "<b>PLEASE WAIT</b>\nToo many requests. Try again in a moment.")
         return True
     if not await ensure_subscribed(update, context):
         return True
@@ -178,7 +178,7 @@ def parse_mint(text, update=None, context=None) -> str:
         return str(Pubkey.from_string(value))
     except Exception:
         raise StepError(
-            "❌ Not a valid Solana token mint. Send the mint directly or a supported link containing it."
+            "Not a valid Solana token mint. Send the mint, or a supported link that contains it."
         ) from None
 
 
@@ -188,7 +188,7 @@ def parse_destination(text, update=None, context=None) -> str:
         return str(Pubkey.from_string(value))
     except Exception:
         raise StepError(
-            "❌ Not a valid Solana address. Send the recipient wallet address."
+            "Not a valid Solana address. Send the recipient wallet address."
         ) from None
 
 
@@ -199,7 +199,7 @@ def parse_sol_amount(text, update=None, context=None) -> float:
     try:
         amount = float(parse_positive_decimal(value))
     except AmountError:
-        raise StepError("❌ Enter a valid SOL amount, for example 0.5.") from None
+        raise StepError("Enter a SOL amount. Example: 0.5.") from None
     return amount
 
 
@@ -210,15 +210,15 @@ def parse_token_or_percent(text, update=None, context=None) -> str:
         try:
             percent = float(parse_positive_decimal(inner))
         except AmountError:
-            raise StepError("❌ Enter a valid percentage, for example 50%.") from None
+            raise StepError("Enter a percentage. Example: 50%.") from None
         if percent <= 0 or percent > 100:
-            raise StepError("❌ Percentage must be between 0 and 100%, for example 50%.")
+            raise StepError("Percentage must be between 0 and 100. Example: 50%.")
         return value
     try:
         float(parse_positive_decimal(value))
     except AmountError:
         raise StepError(
-            "❌ Enter a token quantity (for example 1.5) or a percentage (for example 50%)."
+            "Enter a token amount (example: 1.5) or a percentage (example: 50%)."
         ) from None
     return value
 
@@ -229,13 +229,13 @@ def parse_onoff(text, update=None, context=None) -> bool:
         return True
     if value in {"off", "disable", "disabled", "stop"}:
         return False
-    raise StepError("❌ Enter ON or OFF.")
+    raise StepError("Enter ON or OFF.")
 
 
 def parse_telegram_id(text, update=None, context=None) -> str:
     value = (text or "").strip()
     if not value.isdigit():
-        raise StepError("❌ Enter a numeric Telegram user ID.")
+        raise StepError("Enter a numeric Telegram user ID.")
     return value
 
 
@@ -244,11 +244,11 @@ def parse_setting_name(text, update=None, context=None) -> dict:
 
     parts = (text or "").strip().split()
     if not parts:
-        raise StepError(f"⚙️ Which setting? Options: {', '.join(SETTING_NAMES)}")
+        raise StepError(f"Which setting? {', '.join(SETTING_NAMES)}")
     name = parts[0].lower()
     if name not in SETTING_NAMES:
         raise StepError(
-            f"❌ Unknown setting “{esc(parts[0])}”. Options: {', '.join(SETTING_NAMES)}"
+            f"Unknown setting “{esc(parts[0])}”. Options: {', '.join(SETTING_NAMES)}"
         )
     if len(parts) == 1:
         return {"name": name}

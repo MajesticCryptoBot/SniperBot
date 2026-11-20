@@ -34,7 +34,7 @@ from sniper.handlers.common import (
 )
 from sniper.handlers.trading import build_buy_preview, build_sell_preview
 from sniper.solana_service import WSOL
-from sniper.ui import esc, info
+from sniper.ui import card, esc, info
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +47,12 @@ TRAIL_PRESETS = (10, 20, 30, 50)
 MAX_HOLDINGS_BUTTONS = 8
 PASTE_FLOWS = {"panel_buy_mint", "panel_sell_mint"}
 PASTE_BUY_PROMPT = (
-    "🛒 <b>BUY ASSET</b>\n\n"
-    "Send the token mint you want to buy, or a supported token/pair link."
+    "<b>BUY</b>\n\n"
+    "Send the token mint you want to buy, or a supported token or pair link."
 )
 PASTE_SELL_PROMPT = (
-    "💸 <b>SELL ASSET</b>\n\n"
-    "Send the token mint to sell. The wallet balance is verified before the panel opens."
+    "<b>SELL</b>\n\n"
+    "Send the token mint to sell. The wallet balance is checked before the panel opens."
 )
 
 
@@ -162,16 +162,16 @@ def _buy_keyboard(state, settings) -> InlineKeyboardMarkup:
         rows.append([InlineKeyboardButton("Back", callback_data=f"tp:menu:{mint}")])
     else:
         rows = _preset_rows(BUY_PRESETS, lambda v: (f"{v:g} SOL", f"tp:amt:{v}:{mint}"), per_row=3)
-        rows.append([InlineKeyboardButton("Custom amount", callback_data=f"tp:custom:{mint}")])
+        rows.append([InlineKeyboardButton("Custom", callback_data=f"tp:custom:{mint}")])
         rows.append([
-            InlineKeyboardButton(f"Slippage: {(state.get('slip_bps') or int(settings['slippage_bps'])) / 100:g}%", callback_data=f"tp:slipmenu:{mint}"),
-            InlineKeyboardButton(f"Priority fee: {_fee_label(int(state['fee_lamports'])) if state.get('fee_lamports') else 'dyn'}", callback_data=f"tp:feemenu:{mint}"),
+            InlineKeyboardButton(f"Slip {(state.get('slip_bps') or int(settings['slippage_bps'])) / 100:g}%", callback_data=f"tp:slipmenu:{mint}"),
+            InlineKeyboardButton(f"Fee {_fee_label(int(state['fee_lamports'])) if state.get('fee_lamports') else 'dyn'}", callback_data=f"tp:feemenu:{mint}"),
         ])
         rows.append([
-            InlineKeyboardButton("Limit buy", callback_data=f"tp:limit:{mint}"),
+            InlineKeyboardButton("Limit", callback_data=f"tp:limit:{mint}"),
             InlineKeyboardButton("Close", callback_data=f"tp:close:{mint}"),
         ])
-        confirm = "✅ Confirm buy" + (f" · {float(amount):g} SOL" if amount else "")
+        confirm = "Confirm buy" + (f" · {float(amount):g} SOL" if amount else "")
         rows.append([InlineKeyboardButton(confirm, callback_data=f"tp:go:{mint}")])
     return InlineKeyboardMarkup(rows)
 
@@ -188,17 +188,17 @@ def _sell_keyboard(state, settings) -> InlineKeyboardMarkup:
     else:
         rows = _preset_rows(SELL_PCTS, lambda v: (f"{v}%", f"tp:pct:{v}:{mint}"), per_row=4)
         rows.append([
-            InlineKeyboardButton("Custom amount", callback_data=f"tp:custom:{mint}"),
-            InlineKeyboardButton("Limit sell", callback_data=f"tp:limit:{mint}"),
-            InlineKeyboardButton("Trailing stop", callback_data=f"tp:trail:{mint}"),
+            InlineKeyboardButton("Custom", callback_data=f"tp:custom:{mint}"),
+            InlineKeyboardButton("Limit", callback_data=f"tp:limit:{mint}"),
+            InlineKeyboardButton("Trail", callback_data=f"tp:trail:{mint}"),
         ])
         rows.append([
-            InlineKeyboardButton(f"Slippage: {(state.get('slip_bps') or int(settings['slippage_bps'])) / 100:g}%", callback_data=f"tp:slipmenu:{mint}"),
-            InlineKeyboardButton(f"Priority fee: {_fee_label(int(state['fee_lamports'])) if state.get('fee_lamports') else 'dyn'}", callback_data=f"tp:feemenu:{mint}"),
+            InlineKeyboardButton(f"Slip {(state.get('slip_bps') or int(settings['slippage_bps'])) / 100:g}%", callback_data=f"tp:slipmenu:{mint}"),
+            InlineKeyboardButton(f"Fee {_fee_label(int(state['fee_lamports'])) if state.get('fee_lamports') else 'dyn'}", callback_data=f"tp:feemenu:{mint}"),
         ])
         pct = state.get("pct")
         amount = state.get("amount")
-        confirm = "✅ Confirm sell"
+        confirm = "Confirm sell"
         if pct:
             confirm += f" · {int(pct)}%"
         elif amount:
@@ -216,7 +216,7 @@ def _holdings_keyboard() -> InlineKeyboardMarkup:
         [
             [
                 InlineKeyboardButton("Refresh", callback_data="tp:refreshsell"),
-                InlineKeyboardButton("Enter token mint", callback_data="tp:paste"),
+                InlineKeyboardButton("Paste mint", callback_data="tp:paste"),
                 InlineKeyboardButton("Close", callback_data="tp:close"),
             ],
         ]
@@ -268,31 +268,49 @@ async def _safe_profile(svc, mint: str) -> dict | None:
 
 
 def _buy_text(state, settings, balance_sol, profile, mint) -> str:
-    lines = ["🛒 <b>BUY</b>"]
+    lines = [
+        "🛒 <b>BUY</b>",
+        info("Nothing is signed until you confirm the live quote."),
+        "",
+    ]
+    asset = []
     if profile and (profile.get("name") or profile.get("symbol")):
-        title = f"{esc(profile.get('name') or 'Unknown asset')} ({esc(profile.get('symbol')) if profile.get('symbol') else 'n/a'})"
-        lines.append("")
-        lines.append(title)
+        title = f"{esc(profile.get('name') or 'Unknown')} ({esc(profile.get('symbol')) if profile.get('symbol') else 'n/a'})"
+        asset.append(title)
         metrics = []
         price = _fmt_usd_text(profile.get("price_usd"))
         cap = _fmt_usd_text(profile.get("market_cap_usd"))
         liq = _fmt_usd_text(profile.get("liquidity_usd"))
         if price:
-            metrics.append(f"P {price}")
+            metrics.append(f"Price {price}")
         if cap:
-            metrics.append(f"MC {cap}")
+            metrics.append(f"MCap {cap}")
         if liq:
-            metrics.append(f"Li {liq}")
+            metrics.append(f"Liq {liq}")
         if metrics:
-            lines.append("  ·  ".join(metrics))
-    lines += ["", "Mint", esc(mint), ""]
-    lines.append(f"Balance: {balance_sol:.6f} SOL" if balance_sol is not None else "Balance: unavailable")
+            asset.append(" · ".join(metrics))
+    asset += ["Mint", esc(mint)]
+    asset.append(f"Balance: {balance_sol:.6f} SOL" if balance_sol is not None else "Balance: unavailable")
+    lines.append(card(asset))
     lines += ["", "<b>ORDER</b>"]
     amount = state.get("amount")
-    lines.append(f"Spend: {float(amount):.6f} SOL" if amount else "Spend: select below")
-    lines.append(_slip_line(state, settings))
-    lines.append(_fee_line(state, settings))
-    lines += ["", info("Pick an amount · confirm shows the live quote · Limit order available.")]
+    lines.append(
+        card(
+            [
+                f"Spend: {float(amount):.6f} SOL" if amount else "Spend: select below",
+                _slip_line(state, settings),
+                _fee_line(state, settings),
+            ]
+        )
+    )
+    mode = state.get("mode") or "main"
+    if mode == "slip":
+        foot = "Slippage applies to this order only."
+    elif mode == "fee":
+        foot = "Priority fee applies to this order only."
+    else:
+        foot = "Select an amount. Confirm requests a live quote. A limit order is available."
+    lines += ["", info(foot)]
     return "\n".join(lines)
 
 
@@ -317,35 +335,43 @@ async def open_buy_panel(update, context, svc, mint: str | None = None, *, query
 
 
 def _sell_token_text(state, settings, mint, holding, price, profile) -> str:
-    title = "💸 <b>SELL TERMINAL</b>"
+    title = "<b>SELL TERMINAL</b>"
     if profile and (profile.get("name") or profile.get("symbol")):
-        title += f"  |  {esc(profile.get('name') or 'Unknown asset')} ({esc(profile.get('symbol')) if profile.get('symbol') else 'n/a'})"
-    lines = [title, "", "Mint", esc(mint), ""]
+        title += f"  |  {esc(profile.get('name') or 'Unknown')} ({esc(profile.get('symbol')) if profile.get('symbol') else 'n/a'})"
+    position = ["Mint", esc(mint), ""]
     if holding:
         ui = raw_to_ui(holding["raw"], holding["decimals"])
         value = ui * price if price else None
-        lines += ["Holding", f"{_fmt_amount(ui)} tokens"]
+        position += ["Holding", f"{_fmt_amount(ui)} tokens"]
         if value is not None:
-            lines.append(f"Value: ${value:,.2f}")
+            position.append(f"Value: ${value:,.2f}")
     else:
-        lines += ["Holding", "No balance found"]
+        position += ["Holding", "No balance found"]
     if price:
         price_text = _fmt_usd_text(price)
         if price_text:
-            lines.append(f"Price: {price_text}")
+            position.append(f"Price: {price_text}")
     pct = state.get("pct")
     amount = state.get("amount")
-    lines += ["", "<b>ORDER</b>"]
     if pct:
-        lines.append(f"Sell size: {int(pct)}% of holding")
+        size = f"Sell size: {int(pct)}% of holding"
     elif amount:
-        lines.append(f"Sell size: {amount}")
+        size = f"Sell size: {amount}"
     else:
-        lines.append("Sell size: select below")
-    lines.append(_slip_line(state, settings))
-    lines.append(_fee_line(state, settings))
-    lines += ["", info("Keep SOL for network fees · Trailing stop available.")]
-    return "\n".join(lines)
+        size = "Sell size: select below"
+    return "\n".join(
+        [
+            title,
+            info("Nothing is signed until you confirm the live quote."),
+            "",
+            card(position),
+            "",
+            "<b>ORDER</b>",
+            card([size, _slip_line(state, settings), _fee_line(state, settings)]),
+            "",
+            info("Keep SOL for network fees. A trailing stop is available."),
+        ]
+    )
 
 
 async def _sell_panel_content(svc, user_id: str, state: dict) -> tuple[str, InlineKeyboardMarkup]:
@@ -380,17 +406,19 @@ async def open_sell_token_panel(update, context, svc, mint: str, *, query=None, 
 
 
 def _holdings_text(entries, total_value, hidden) -> str:
-    lines = ["💸 <b>SELL · WALLET HOLDINGS</b>", ""]
+    lines = ["<b>SELL · WALLET HOLDINGS</b>", info("Select a holding to open its sell panel."), ""]
+    rows = []
     for index, entry in enumerate(entries, start=1):
         line = f"{index:02d}  {esc(entry['label'])}"
         if entry.get("price_text"):
             line += f"  ·  {entry['price_text']}"
-        lines.append(line)
+        rows.append(line)
     if total_value is not None:
-        lines += ["", f"💼 Displayed value: ${total_value:,.2f}"]
+        rows.append(f"Displayed value: ${total_value:,.2f}")
+    lines.append(card(rows))
     if hidden:
-        lines.append(f"Other holdings: {hidden}. Send /sell with the mint to open one directly.")
-    lines += ["", info("Refresh re-reads balances · paste a mint to check an asset not listed.")]
+        lines.append(f"Other holdings: {hidden}. Use /sell with the mint to open one.")
+    lines += ["", info("Refresh re-reads balances. Paste a mint to open an asset that is not listed.")]
     return "\n".join(lines)
 
 
@@ -400,7 +428,7 @@ async def open_sell_holdings(update, context, svc, *, query=None) -> None:
     try:
         accounts = await svc.rpc.get_token_accounts(user["wallet_address"])
     except Exception:
-        await reply(update, "The network did not respond. Please try again shortly.")
+        await reply(update, "<b>NETWORK</b>\nThe network did not respond. Try again shortly.")
         return
     holdings: dict[str, dict] = {}
     for item in accounts:
@@ -409,9 +437,9 @@ async def open_sell_holdings(update, context, svc, *, query=None) -> None:
     holdings = {mint: slot for mint, slot in holdings.items() if slot["raw"] > 0}
     if not holdings:
         text = (
-            "💸 <b>SELL · WALLET HOLDINGS</b>\n\n"
-            "No SPL token balances found in this wallet.\n\n"
-            "Use /buy to acquire a token, or send a token mint to check it."
+            "<b>SELL · WALLET HOLDINGS</b>\n\n"
+            "No SPL token balances in this wallet.\n\n"
+            "Use /buy, or send a token mint to check one."
         )
         _close_panel(context)
         if query is not None:
@@ -517,14 +545,14 @@ async def on_trade_panel_callback(update, context) -> None:
     svc = services(context)
     user = update.effective_user
     if user and not svc.limiter.allow(f"cmd:{user.id}", svc.cfg.commands_per_30s, 30):
-        await reply(update, "⏳ Rate limit reached. Please wait a moment.")
+        await reply(update, "<b>PLEASE WAIT</b>\nToo many requests. Try again in a moment.")
         return
     if not await ensure_subscribed(update, context):
         return
     if action == "close":
         _cancel_paste_flow(context)
         _close_panel(context)
-        await _edit(query, "✖️ Panel closed. Send /buy or /sell to reopen.", None)
+        await _edit(query, "<b>CLOSED</b>\nSend /buy or /sell to reopen.", None)
         return
     if action in {"holdings", "refreshsell"}:
         await open_sell_holdings(update, context, svc, query=query)
@@ -539,7 +567,7 @@ async def on_trade_panel_callback(update, context) -> None:
         return
     state = _panel(context)
     if not state:
-        await reply(update, "⌛ Panel expired. Send /buy or /sell to open a fresh one.")
+        await reply(update, "<b>PANEL EXPIRED</b>\nSend /buy or /sell to open a new one.")
         return
     if action in {"amt", "pct", "slip", "fee"}:
         value_raw = parts[2] if len(parts) > 2 else ""
@@ -628,12 +656,12 @@ async def _refresh_sell_panel(update, context, query, svc, state) -> None:
 async def _confirm_panel(update, context, query, svc, state) -> None:
     mint = state.get("mint")
     if not mint:
-        await reply(update, "❌ No asset selected. Send a mint or open /sell to pick a holding.")
+        await reply(update, "<b>NO ASSET</b>\nSend a mint, or open /sell and pick a holding.")
         return
     if state.get("side") == "buy":
         amount = state.get("amount")
         if not amount or float(amount) <= 0:
-            await reply(update, "❌ Select a spend amount first.")
+            await reply(update, "<b>NO AMOUNT</b>\nSelect a spend amount first.")
             return
         _close_panel(context)
         _cancel_paste_flow(context)
@@ -646,7 +674,7 @@ async def _confirm_panel(update, context, query, svc, state) -> None:
             slippage_bps=state.get("slip_bps"),
             priority_fee_lamports=state.get("fee_lamports"),
         )
-        await _edit(query, "✅ Buy preview sent below. Panel closed.", None)
+        await _edit(query, "<b>QUOTE READY</b>\nBuy preview sent below. This panel is closed.", None)
         return
     pct = state.get("pct")
     amount = state.get("amount")
@@ -655,7 +683,7 @@ async def _confirm_panel(update, context, query, svc, state) -> None:
     elif amount:
         spec = str(amount)
     else:
-        await reply(update, "❌ Select the sell size first.")
+        await reply(update, "<b>NO SIZE</b>\nSelect the sell size first.")
         return
     _close_panel(context)
     _cancel_paste_flow(context)
@@ -668,7 +696,7 @@ async def _confirm_panel(update, context, query, svc, state) -> None:
         slippage_bps=state.get("slip_bps"),
         priority_fee_lamports=state.get("fee_lamports"),
     )
-    await _edit(query, "✅ Sell preview sent below. Panel closed.", None)
+    await _edit(query, "<b>QUOTE READY</b>\nSell preview sent below. This panel is closed.", None)
 
 
 # ---------------------------------------------------------------------------
@@ -680,32 +708,33 @@ def _trigger_line(row) -> str:
     short = f"{mint[:6]}…{mint[-4:]}"
     kind = row["kind"]
     if kind == "limit_buy":
-        return f"LIMIT BUY · {float(row['amount_sol']):g} SOL · trigger ≤ ${float(row['target_price_usd']):g} · {short}"
+        return f"LIMIT BUY · {float(row['amount_sol']):g} SOL · at or below ${float(row['target_price_usd']):g} · {short}"
     if kind == "limit_sell":
-        return f"LIMIT SELL · {float(row['sell_percent']):g}% · trigger ≥ ${float(row['target_price_usd']):g} · {short}"
+        return f"LIMIT SELL · {float(row['sell_percent']):g}% · at or above ${float(row['target_price_usd']):g} · {short}"
     peak = float(row["peak_price_usd"] or 0)
     peak_text = f"${peak:g}" if peak else "initialising"
-    return (f"TRAILING STOP · sell {float(row['sell_percent']):g}% on a "
+    return (f"TRAILING STOP · sell {float(row['sell_percent']):g}% · "
             f"{float(row['trail_distance_pct']):g}% pullback · peak {peak_text} · {short}")
 
 
 def _triggers_text(rows) -> str:
     open_rows = [row for row in rows if row["status"] == "open"]
-    lines = ["📋 <b>ORDER MANAGEMENT</b>", "", "<b>ARMED</b>"]
+    lines = ["<b>ORDER MANAGEMENT</b>", info("Armed orders are watched automatically."), "", "<b>ARMED</b>"]
     if open_rows:
-        for row in open_rows:
-            lines.append(f"#{row['id']}  {_trigger_line(row)}")
+        armed = [f"#{row['id']}  {_trigger_line(row)}" for row in open_rows]
+        lines.append(card(armed))
     else:
-        lines.append("No active orders.")
-        lines.append("Limit buy from /buy · limit sell or trailing stop from /sell.")
+        lines.append(card(["No active orders.", "Limit buy is in /buy. Limit sell and trailing stop are in /sell."]))
     closed = [row for row in rows if row["status"] != "open"][:5]
     if closed:
         lines += ["", "<b>RECENT</b>"]
         labels = {"triggered": "TRIGGERED", "cancelled": "CANCELLED"}
+        recent = []
         for row in closed:
             status = labels.get(row["status"], f"FAILED: {esc((row.get('trigger_error') or '')[:70])}")
-            lines.append(f"#{row['id']}  {_trigger_line(row)}  ·  {status}")
-    lines += ["", info("Orders are monitored automatically · executed trades appear in /orders.")]
+            recent.append(f"#{row['id']}  {_trigger_line(row)}  ·  {status}")
+        lines.append(card(recent))
+    lines += ["", info("Filled orders appear in /orders.")]
     return "\n".join(lines)
 
 
@@ -715,11 +744,11 @@ def _triggers_keyboard(open_rows) -> InlineKeyboardMarkup:
         rid = row["id"]
         if row["kind"] == "trailing_stop":
             rows.append([
-                InlineKeyboardButton(f"Cancel order #{rid}", callback_data=f"tt:cancel:{rid}"),
-                InlineKeyboardButton(f"Edit distance", callback_data=f"tt:distmenu:{rid}"),
+                InlineKeyboardButton(f"Cancel #{rid}", callback_data=f"tt:cancel:{rid}"),
+                InlineKeyboardButton("Distance", callback_data=f"tt:distmenu:{rid}"),
             ])
         else:
-            rows.append([InlineKeyboardButton(f"Cancel order #{rid}", callback_data=f"tt:cancel:{rid}")])
+            rows.append([InlineKeyboardButton(f"Cancel #{rid}", callback_data=f"tt:cancel:{rid}")])
     if not rows:
         rows.append([InlineKeyboardButton("Close", callback_data="tt:close")])
     return InlineKeyboardMarkup(rows)
@@ -745,7 +774,7 @@ async def on_trigger_callback(update, context) -> None:
     svc = services(context)
     user = update.effective_user
     if user and not svc.limiter.allow(f"cmd:{user.id}", svc.cfg.commands_per_30s, 30):
-        await reply(update, "Please wait a moment before using this control again.")
+        await reply(update, "<b>PLEASE WAIT</b>\nTry again in a moment.")
         return
     if not await ensure_subscribed(update, context):
         return
@@ -755,14 +784,14 @@ async def on_trigger_callback(update, context) -> None:
         return
     if action == "cancel" and len(parts) == 3 and parts[2].isdigit():
         cancelled = await svc.db.cancel_trigger(int(parts[2]), user_id)
-        await reply(update, "✅ Order cancelled. It will not be submitted." if cancelled else "That order is no longer active.")
+        await reply(update, "<b>ORDER CANCELLED</b>\nIt will not be submitted." if cancelled else "That order is no longer active.")
         return
     if action == "distmenu" and len(parts) == 3 and parts[2].isdigit():
         rid = int(parts[2])
         row = [InlineKeyboardButton(f"{p:g}%", callback_data=f"tt:dist:{rid}:{p}") for p in TRAIL_PRESETS]
         await reply(
             update,
-            f"🎚 <b>TRAILING DISTANCE</b>\n\nOrder #{rid}\n\n" + info("Triggers when the market falls this far below its tracked high."),
+            f"<b>TRAILING DISTANCE</b>\n\nOrder #{rid}\n\n" + info("Fires when price falls this far below the tracked high."),
             InlineKeyboardMarkup([row]),
         )
         return
@@ -772,10 +801,10 @@ async def on_trigger_callback(update, context) -> None:
         except ValueError:
             return
         if not 1 <= pct <= 90:
-            await reply(update, "❌ Trailing distance must be between 1% and 90%.")
+            await reply(update, "Trailing distance must be between 1% and 90%.")
             return
         updated = await svc.db.update_trigger_distance(int(parts[2]), user_id, pct)
-        await reply(update, f"✅ <b>TRAILING DISTANCE UPDATED</b>\n\nNew pullback: {pct:g}%" if updated else "That order is no longer active.")
+        await reply(update, f"<b>DISTANCE UPDATED</b>\n\nPullback: {pct:g}%" if updated else "That order is no longer active.")
         return
 
 
@@ -788,9 +817,9 @@ def _parse_usd_price(text, update=None, context=None) -> float:
     try:
         price = float(parse_positive_decimal(value))
     except AmountError:
-        raise flows.StepError("❌ Enter a valid USD price, for example 0.00042 or $0.42.") from None
+        raise flows.StepError("Enter a USD price. Example: 0.00042 or $0.42.") from None
     if not 0 < price < 1_000_000_000:
-        raise flows.StepError("❌ Price outside the accepted range. Enter a valid USD target.")
+        raise flows.StepError("Price is outside the accepted range.")
     return price
 
 
@@ -799,9 +828,9 @@ def _parse_trail_pct(text, update=None, context=None) -> float:
     try:
         pct = float(parse_positive_decimal(value))
     except AmountError:
-        raise flows.StepError("❌ Enter a valid percentage, for example 20 or 20%.") from None
+        raise flows.StepError("Enter a percentage. Example: 20 or 20%.") from None
     if not 1 <= pct <= 90:
-        raise flows.StepError("❌ Trailing distance must be between 1% and 90%.")
+        raise flows.StepError("Trailing distance must be between 1% and 90%.")
     return pct
 
 
@@ -810,36 +839,36 @@ def _parse_sell_percent(text, update=None, context=None) -> float:
     try:
         pct = float(parse_positive_decimal(value))
     except AmountError:
-        raise flows.StepError("❌ Enter a percentage of your holding, for example 50%.") from None
+        raise flows.StepError("Enter a percentage of the holding. Example: 50%.") from None
     if not 0 < pct <= 100:
-        raise flows.StepError("❌ Percentage must be between 0 and 100%.")
+        raise flows.StepError("Percentage must be between 0 and 100.")
     return pct
 
 
-PANEL_BUY_AMOUNT_PROMPT = "💰 <b>BUY AMOUNT</b>\n\nEnter the SOL amount to spend, for example 0.25."
-PANEL_SELL_AMOUNT_PROMPT = "💸 <b>SELL SIZE</b>\n\nEnter a percentage (for example 30%) or an exact token amount (for example 1.5)."
+PANEL_BUY_AMOUNT_PROMPT = "<b>BUY AMOUNT</b>\n\nEnter the SOL amount to spend. Example: 0.25."
+PANEL_SELL_AMOUNT_PROMPT = "<b>SELL SIZE</b>\n\nEnter a percentage (example: 30%) or a token amount (example: 1.5)."
 LIMIT_BUY_PRICE_PROMPT = (
-    "📉 <b>LIMIT BUY PRICE</b>\n\nEnter the USD target price, for example 0.00042.\n\n"
-    + info("Fires when the market price reaches or falls below it.")
+    "<b>LIMIT BUY PRICE</b>\n\nEnter the USD target. Example: 0.00042.\n\n"
+    + info("Fires when the price is at or below it.")
 )
-LIMIT_BUY_AMOUNT_PROMPT = "💰 <b>LIMIT BUY SIZE</b>\n\nSOL to spend when the target is reached?"
+LIMIT_BUY_AMOUNT_PROMPT = "<b>LIMIT BUY SIZE</b>\n\nSOL to spend when the target is reached."
 LIMIT_SELL_PRICE_PROMPT = (
-    "📈 <b>LIMIT SELL PRICE</b>\n\nEnter the USD target price, for example 0.001.\n\n"
-    + info("Fires when the market price reaches or rises above it.")
+    "<b>LIMIT SELL PRICE</b>\n\nEnter the USD target. Example: 0.001.\n\n"
+    + info("Fires when the price is at or above it.")
 )
-LIMIT_SELL_PCT_PROMPT = "💸 <b>LIMIT SELL SIZE</b>\n\nPercentage of the holding to sell at the target? For example 50%."
+LIMIT_SELL_PCT_PROMPT = "<b>LIMIT SELL SIZE</b>\n\nPercentage of the holding to sell. Example: 50%."
 TRAIL_DISTANCE_PROMPT = (
-    "🎚 <b>TRAILING STOP DISTANCE</b>\n\nPullback percentage that triggers the sell? For example 20 = 20% below the tracked high.\n\n"
-    + info("The peak rises with the market and never moves lower before firing.")
+    "<b>TRAILING STOP</b>\n\nPullback that sells. Example: 20 means 20% below the tracked high.\n\n"
+    + info("The tracked high rises with price and does not fall before the order fires.")
 )
-TRAIL_PCT_PROMPT = "💸 <b>TRAILING STOP SIZE</b>\n\nPercentage of the holding to sell when the trailing level is hit? For example 100%."
+TRAIL_PCT_PROMPT = "<b>TRAILING STOP SIZE</b>\n\nPercentage of the holding to sell. Example: 100%."
 
 
 async def _require_panel_mint(update, context) -> str | None:
     state = _panel(context)
     mint = (state or {}).get("mint")
     if not mint:
-        await reply(update, "⌛ Token no longer available in this panel. Reopen /buy or /sell.")
+        await reply(update, "<b>PANEL CLOSED</b>\nReopen /buy or /sell.")
         return None
     return mint
 
@@ -850,9 +879,9 @@ def _armed_reply(headline: str, detail: list[str], trigger_id: int) -> str:
             headline,
             "",
             *detail,
-            f"⚡ Order #{trigger_id} · manage with /triggers",
+            f"Reference #{trigger_id}",
             "",
-            info("Monitored every ~15s · manual orders do not run the Autosnipe safety gate."),
+            info("Checked about every 15 seconds. Manual orders do not use the Autosnipe safety gate."),
         ]
     )
 
@@ -860,7 +889,7 @@ def _armed_reply(headline: str, detail: list[str], trigger_id: int) -> str:
 async def _panel_buy_amount_done(update, context, data) -> None:
     state = _panel(context)
     if not state or state.get("side") != "buy":
-        await reply(update, "⌛ Buy panel closed. Send /buy to reopen.")
+        await reply(update, "<b>PANEL CLOSED</b>\nSend /buy to reopen.")
         return
     await open_buy_panel(update, context, services(context), state.get("mint"), preset={"amount": float(data["amount"])})
 
@@ -868,7 +897,7 @@ async def _panel_buy_amount_done(update, context, data) -> None:
 async def _panel_sell_amount_done(update, context, data) -> None:
     state = _panel(context)
     if not state or state.get("side") != "sell":
-        await reply(update, "⌛ Sell panel closed. Send /sell to reopen.")
+        await reply(update, "<b>PANEL CLOSED</b>\nSend /sell to reopen.")
         return
     await open_sell_token_panel(update, context, services(context), state["mint"], preset={"amount": str(data["amount"])})
 
@@ -879,19 +908,19 @@ async def _panel_buy_mint_done(update, context, data) -> None:
     mint = data["mint"]
     if mint == WSOL:
         flows.arm(context, "panel_buy_mint")
-        await reply(update, "❌ That is wrapped SOL (WSOL), not a tradable token. Send the token mint to purchase.")
+        await reply(update, "<b>NOT A TOKEN</b>\nThat is wrapped SOL, not a tradable token. Send the token mint to purchase.")
         return
     try:
         await svc.rpc.get_mint_info(mint)
     except UserFacingError as exc:
         flows.arm(context, "panel_buy_mint")
-        reason = esc(str(exc)) if str(exc).startswith("The network") else "❌ Valid Solana address, but not a token mint."
+        reason = esc(str(exc)) if str(exc).startswith("The network") else "<b>NOT A TOKEN MINT</b>\nValid Solana address, but not a token mint."
         await reply(update, f"{reason}\n\n{PASTE_BUY_PROMPT}")
         return
     except Exception:
         logger.warning("mint check failed on a pasted buy address")
         flows.arm(context, "panel_buy_mint")
-        await reply(update, f"📡 The network did not respond. Please try again.\n\n{PASTE_BUY_PROMPT}")
+        await reply(update, f"<b>NETWORK</b>\nThe network did not respond. Please try again.\n\n{PASTE_BUY_PROMPT}")
         return
     await open_buy_panel(update, context, svc, mint)
 
@@ -910,7 +939,7 @@ async def _panel_sell_mint_done(update, context, data) -> None:
         logger.warning("sell paste flow could not read the holdings")
     if held == 0:
         flows.arm(context, "panel_sell_mint")
-        await reply(update, "❌ No balance for this token in your wallet. Send another mint or buy it with /buy.")
+        await reply(update, "<b>NO BALANCE</b>\nNo balance for this token in your wallet. Send another mint, or buy it with /buy.")
         return
     await open_sell_token_panel(update, context, svc, mint)
 
@@ -923,11 +952,11 @@ async def _limit_buy_done(update, context, data) -> None:
         return
     count = await svc.db.count_triggers_for(user_id)
     if count >= svc.cfg.max_watch_per_user:
-        raise UserFacingError(f"⚠️ Limit reached: {svc.cfg.max_watch_per_user} active orders. Cancel one in /triggers first.")
+        raise UserFacingError(f"Order limit reached ({svc.cfg.max_watch_per_user}). Cancel one in /triggers first.")
     settings = await svc.db.get_settings(user_id)
     amount = float(data["amount"])
     if amount > float(settings["max_sol_per_trade"]):
-        raise UserFacingError("⚠️ Above your per-trade maximum. Adjust the amount or use /config.")
+        raise UserFacingError("Above your per-trade maximum. Lower the amount, or change it in /config.")
     price = float(data["price"])
     trigger_id = await svc.db.add_trade_trigger(
         telegram_id=user_id, kind="limit_buy", mint=mint, target_price_usd=price, amount_sol=amount
@@ -936,7 +965,7 @@ async def _limit_buy_done(update, context, data) -> None:
     await reply(
         update,
         _armed_reply(
-            "⚡ <b>LIMIT BUY ACTIVATED</b>",
+            "<b>LIMIT BUY ACTIVATED</b>",
             [f"Mint: {esc(mint)}", f"Trigger: price ≤ ${price:g}", f"Spend: {amount:.4f} SOL"],
             trigger_id,
         ),
@@ -951,7 +980,7 @@ async def _limit_sell_done(update, context, data) -> None:
         return
     count = await svc.db.count_triggers_for(user_id)
     if count >= svc.cfg.max_watch_per_user:
-        raise UserFacingError(f"You have reached the limit of {svc.cfg.max_watch_per_user} active conditional orders. Cancel an order in /triggers before creating another.")
+        raise UserFacingError(f"Order limit reached ({svc.cfg.max_watch_per_user} active). Cancel one in /triggers first.")
     price = float(data["price"])
     percent = float(data["percent"])
     trigger_id = await svc.db.add_trade_trigger(
@@ -961,7 +990,7 @@ async def _limit_sell_done(update, context, data) -> None:
     await reply(
         update,
         _armed_reply(
-            "⚡ <b>LIMIT SELL ACTIVATED</b>",
+            "<b>LIMIT SELL ACTIVATED</b>",
             [f"Mint: {esc(mint)}", f"Trigger: price ≥ ${price:g}", f"Sell size: {percent:g}% of holding"],
             trigger_id,
         ),
@@ -976,7 +1005,7 @@ async def _trailing_stop_done(update, context, data) -> None:
         return
     count = await svc.db.count_triggers_for(user_id)
     if count >= svc.cfg.max_watch_per_user:
-        raise UserFacingError(f"You have reached the limit of {svc.cfg.max_watch_per_user} active conditional orders. Cancel an order in /triggers before creating another.")
+        raise UserFacingError(f"Order limit reached ({svc.cfg.max_watch_per_user} active). Cancel one in /triggers first.")
     distance = float(data["distance"])
     percent = float(data["percent"])
     trigger_id = await svc.db.add_trade_trigger(
@@ -986,7 +1015,7 @@ async def _trailing_stop_done(update, context, data) -> None:
     await reply(
         update,
         _armed_reply(
-            "⚡ <b>TRAILING STOP ACTIVATED</b>",
+            "<b>TRAILING STOP ACTIVATED</b>",
             [
                 f"Mint: {esc(mint)}",
                 f"Sell size: {percent:g}% on a {distance:g}% pullback from the tracked high",

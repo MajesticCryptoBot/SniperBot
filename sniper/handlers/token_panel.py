@@ -30,18 +30,20 @@ from sniper.handlers.trading import run_scan
 from sniper.handlers.trade_panel import open_buy_panel, open_sell_token_panel
 from sniper.keyboards import token_options_keyboard
 from sniper.solana_service import WSOL
-from sniper.ui import esc
+from sniper.ui import card, esc
 from sniper.ui import info as ui_info
 
 logger = logging.getLogger(__name__)
 
 NOT_A_TOKEN = (
-    "❌ Valid Solana address, but not a token mint. "
-    "Send a token mint directly or a supported token/pair link."
+    "<b>NOT A TOKEN MINT</b>\n"
+    "Valid Solana address, but not a token mint. "
+    "Send a token mint, or a supported token or pair link."
 )
 NONE_A_TOKEN = (
-    "❌ None of the {n} addresses is a Solana token mint. "
-    "Send a token mint directly or a supported token/pair link."
+    "<b>NOT A TOKEN MINT</b>\n"
+    "None of the {n} addresses is a Solana token mint. "
+    "Send a token mint, or a supported token or pair link."
 )
 
 
@@ -79,46 +81,46 @@ def _panel_lines(address: str, info: dict, live: bool, profile: dict | None) -> 
     """Render the detection panel. Shared by the first paste and by Refresh,
     so both always show the same fields from the freshest data."""
     lines = [
-        "🎯 <b>TOKEN DETECTED</b>",
+        "<b>TOKEN DETECTED</b>",
+        ui_info("Submitted by you. No order has been created."),
         "",
-        "Submitted by you · no transaction created.",
-        "",
-        f"Mint: {esc(address)}",
     ]
+    body = [f"Mint: {esc(address)}"]
     if profile and (profile.get("name") or profile.get("symbol")):
-        name = profile.get("name") or "unknown"
+        name = profile.get("name") or "Unknown"
         symbol = profile.get("symbol") or "?"
-        lines.append(f"Asset: {esc(name)} ({esc(symbol)})")
+        body.append(f"Asset: {esc(name)} ({esc(symbol)})")
     if profile and profile.get("price_usd"):
         price_text = _fmt_price(profile["price_usd"])
         if price_text:
-            lines.append(f"Price: {price_text}")
+            body.append(f"Price: {price_text}")
     if profile and profile.get("liquidity_usd"):
         liquidity_text = _fmt_usd(profile["liquidity_usd"])
         if liquidity_text:
             dex = f" on {esc(profile['dex'])}" if profile.get("dex") else ""
-            lines.append(f"Liquidity: {liquidity_text}{dex}")
+            body.append(f"Liquidity: {liquidity_text}{dex}")
     if profile and profile.get("market_cap_usd"):
         cap_text = _fmt_usd(profile["market_cap_usd"])
         if cap_text:
-            lines.append(f"Market cap: {cap_text}")
+            body.append(f"Market cap: {cap_text}")
     if profile and profile.get("volume_24h_usd"):
         volume_text = _fmt_usd(profile["volume_24h_usd"])
         if volume_text:
-            lines.append(f"24h volume: {volume_text}")
+            body.append(f"24h volume: {volume_text}")
     change = profile.get("change_24h_pct") if profile else None
     if change is not None and change == change:
         sign = "+" if change >= 0 else ""
-        lines.append(f"24h change: {sign}{change:.1f}%")
+        body.append(f"24h change: {sign}{change:.1f}%")
+    body.append("🟢 Market: LIVE" if live else "Market: NOT LIVE")
     if profile is None:
-        lines.append("Market data is not available yet. The token may be new or not indexed by the price provider.")
-    lines.append("🟢 Market: LIVE" if live else "🔴 Market: NOT LIVE")
+        body.append("Market data is not available yet. The token may be new, or not indexed yet.")
+    lines.append(card(body))
     if info.get("freeze_authority"):
-        lines.append("🚨 CRITICAL: freeze authority is active. Material token-control risk.")
+        lines.append("CRITICAL: freeze authority is active. The token can be frozen.")
     elif info.get("mint_authority"):
-        lines.append("⚠️ Mint authority is active. Use /scan for the full assessment.")
+        lines.append("Mint authority is active. Use /scan for the full report.")
     lines.append("")
-    lines.append(ui_info("Pick an action below · Refresh pulls the latest data."))
+    lines.append(ui_info("Choose an action below. Refresh loads the latest data."))
     return lines
 
 
@@ -145,7 +147,7 @@ async def _maybe_auto_buy(update, context, svc, mint: str, info: dict) -> bool:
         return False
     trade_id, reason = await svc.queue.enqueue_auto_buy(str(user.id), mint, amount)
     if trade_id is None:
-        await reply(update, f"🤖 <b>AUTO-BUY NOT QUEUED</b>\n\nReason: {esc(reason)}\n\n{ui_info('The token panel opens so you can act manually.')}")
+        await reply(update, f"<b>AUTO-BUY NOT QUEUED</b>\n\nReason: {esc(reason)}\n\n{ui_info('The token panel opens so you can act manually.')}")
         return False  # the panel still opens so the user can act manually
     await reply(
         update,
@@ -153,11 +155,15 @@ async def _maybe_auto_buy(update, context, svc, mint: str, info: dict) -> bool:
             [
                 "🤖 <b>AUTO-BUY REQUEST QUEUED</b>",
                 "",
-                f"Spend: {amount:.4f} SOL",
-                f"Mint: {esc(mint)}",
-                f"Reference: {trade_id}",
+                card(
+                    [
+                        f"Spend: {amount:.4f} SOL",
+                        f"Mint: {esc(mint)}",
+                        f"Reference: {trade_id}",
+                    ]
+                ),
                 "",
-                ui_info("Auto-buy skips manual confirmation and the safety gate · settings in /autosnipe."),
+                ui_info("Confirmation and the safety gate are skipped. Switches are in /autosnipe."),
             ]
         ),
     )
@@ -192,11 +198,11 @@ async def _detect_one(update, context, svc, address: str) -> str:
             return "error"
         except Exception:
             logger.warning("mint check failed for a resolved pair address")
-            await reply(update, "📡 The network did not respond. Please try again shortly.")
+            await reply(update, "<b>NETWORK</b>\nThe network did not respond. Try again shortly.")
             return "error"
     except Exception:
         logger.warning("mint check failed for a pasted address")
-        await reply(update, "📡 The network did not respond. Please try again shortly.")
+        await reply(update, "<b>NETWORK</b>\nThe network did not respond. Please try again shortly.")
         return "error"
     live = False
     try:
@@ -259,7 +265,7 @@ async def _refresh_token_panel(update, query, svc, mint: str) -> None:
         return
     except Exception:
         logger.warning("mint check failed on token panel refresh")
-        await reply(update, "📡 The network did not respond. Refresh in a moment.")
+        await reply(update, "<b>NETWORK</b>\nThe network did not respond. Refresh in a moment.")
         return
     live = False
     try:
@@ -301,7 +307,7 @@ async def on_token_callback(update, context) -> None:
     svc = services(context)
     user = update.effective_user
     if user and not svc.limiter.allow(f"cmd:{user.id}", svc.cfg.commands_per_30s, 30):
-        await reply(update, "⏳ Rate limit reached. Please wait a moment.")
+        await reply(update, "<b>PLEASE WAIT</b>\nToo many requests. Try again in a moment.")
         return
     if action == "close":
         await query.edit_message_reply_markup(None)
@@ -314,11 +320,11 @@ async def on_token_callback(update, context) -> None:
     if action in {"buy", "sell", "auto"}:
         row = await svc.db.get_user(str(user.id))
         if not row or not row.get("wallet_address"):
-            await reply(update, "💼 No wallet connected yet. Complete /start first.")
+            await reply(update, "<b>NO WALLET</b>\nComplete /start first.")
             return
     if action == "auto":
         if await svc.db.get_state("global_pause") == "1":
-            await reply(update, "🚫 Trading is paused. Please try again later.")
+            await reply(update, "<b>TRADING PAUSED</b>\nTry again later.")
             return
         await flows.begin(update, context, "autosnipe_add", prefill={"mint": mint})
         return
@@ -329,7 +335,7 @@ async def on_token_callback(update, context) -> None:
         row = await svc.db.get_user(str(user.id))
         accounts = await svc.rpc.get_token_accounts(row["wallet_address"])
         if not any(item["mint"] == mint for item in accounts):
-            await reply(update, "❌ No balance for this token in your wallet. Use 🛒 Buy first.")
+            await reply(update, "<b>NO BALANCE</b>\nThis wallet does not hold the token. Buy it first.")
             return
         await open_sell_token_panel(update, context, svc, mint)
         return

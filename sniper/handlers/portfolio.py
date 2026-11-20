@@ -6,7 +6,7 @@ from sniper.errors import UserFacingError
 from sniper.handlers.common import command, reply, services
 from sniper.solana_service import WSOL
 from sniper.timeutil import parse_utc
-from sniper.ui import esc, info
+from sniper.ui import card, esc, info, mono
 
 _SIDE_TITLE = {"buy": "BUY", "sell": "SELL", "withdraw": "WITHDRAW"}
 _STATUS_TITLE = {
@@ -34,7 +34,7 @@ def format_trade_row(index: int, row: dict) -> str:
     lines = [f"{index:02d}  {side}  |  {status.upper()}  |  {amount_text}"]
     tags = []
     if row.get("source") == "autosnipe":
-        tags.append("🎯 AUTOSNIPE")
+        tags.append("AUTOSNIPE")
     tags.append(_fmt_time(row.get("created_at") or ""))
     lines.append("     " + " · ".join(tags))
     if row.get("destination"):
@@ -65,14 +65,16 @@ async def summary(update, context) -> None:
     sol_usd = float(prices.get(WSOL) or 0)
     holdings = []
     sol_balance = lamports_to_sol(lamports)
-    lines = ["📊 <b>PORTFOLIO</b>", "", "Wallet", esc(user["wallet_address"]), ""]
+    lines = ["<b>PORTFOLIO</b>", info("Balances from the wallet. Values are indicative."), ""]
+    lines.append(card(["Wallet", mono(user["wallet_address"])]))
+    lines.append("")
     if sol_usd <= 0:
         lines.append(f"SOL: {sol_balance:.6f}")
     else:
         lines.append(f"SOL: {sol_balance:.6f} (${sol_balance * sol_usd:,.2f})")
     positions = {row["token_mint"]: row for row in await svc.db.list_positions(user["telegram_id"])}
     if not accounts:
-        lines += ["", "<b>HOLDINGS</b>", "No token balances found."]
+        lines += ["", "<b>HOLDINGS</b>", "None."]
     else:
         lines += ["", "<b>HOLDINGS</b>"]
     displayed = 0
@@ -87,11 +89,14 @@ async def summary(update, context) -> None:
         if cost and sol_usd > 0 and usd is not None:
             cost_usd = float(cost["cost_basis_sol"]) * sol_usd
             pnl_usd = usd - cost_usd
-            cost_text = f"\n     Cost: ${cost_usd:,.2f} · P&L: ${pnl_usd:+,.2f}"
+            cost_text = f"\nCost ${cost_usd:,.2f} · PnL ${pnl_usd:+,.2f}"
         elif cost:
-            cost_text = f"\n     Cost: {float(cost['cost_basis_sol']):.4f} SOL"
-        value = f"${usd:,.2f}" if usd is not None else "Not available"
-        block = f"{item['mint'][:8]}…{item['mint'][-4:]}\n     Balance: {item['ui_amount']:.6f} · Value: {esc(value)}{cost_text}"
+            cost_text = f"\nCost {float(cost['cost_basis_sol']):.4f} SOL"
+        value = f"${usd:,.2f}" if usd is not None else "n/a"
+        block = card([
+            f"{item['mint'][:8]}…{item['mint'][-4:]}",
+            f"Balance {item['ui_amount']:.6f} · Value {esc(value)}{cost_text}",
+        ])
         if sum(len(line) + 1 for line in lines) + len(block) <= 3100:
             lines.append(block)
             displayed += 1
@@ -99,17 +104,17 @@ async def summary(update, context) -> None:
             omitted += 1
     omitted += max(0, len(accounts) - 25)
     if omitted:
-        lines.append(f"\n+{omitted} more not shown")
+        lines.append(f"+{omitted} more not shown")
     totals = portfolio_totals(sol_balance, sol_usd, holdings)
     lines += ["", "<b>TOTAL VALUE</b>"]
     if sol_usd <= 0:
-        lines.append("USD valuation temporarily unavailable. Balances shown above.")
+        lines.append("USD value is unavailable. Balances are shown above.")
     else:
         lines += [
-            f"💼 Total: ${totals['total_usd']:,.2f}",
-            f"SOL: ${totals['sol_value_usd']:,.2f} · Tokens: ${totals['tokens_usd']:,.2f}",
+            f"Total ${totals['total_usd']:,.2f}",
+            f"SOL ${totals['sol_value_usd']:,.2f} · Tokens ${totals['tokens_usd']:,.2f}",
             "",
-            info("Values are indicative and depend on price feeds and liquidity."),
+            info("Indicative only. Depends on price feeds and liquidity."),
         ]
     await reply(update, "\n".join(lines))
 
@@ -121,12 +126,12 @@ def _render_orders(rows: list[dict]) -> str:
     for index, row in enumerate(rows, start=1):
         block = format_trade_row(index, row)
         if used + len(block) > _ORDERS_BUDGET and shown:
-            lines.append(f"\n+{len(rows) - shown} older records omitted (newest first).")
+            lines.append(f"+{len(rows) - shown} older records omitted (newest first).")
             break
         lines += [block, ""]
         used += len(block) + 2
         shown += 1
-    lines.append(info("Signatures are verifiable on any Solana explorer."))
+    lines.append(info("Signatures can be checked on any Solana explorer."))
     return "\n".join(lines)
 
 
@@ -135,6 +140,6 @@ async def orders(update, context) -> None:
     svc = services(context)
     rows = await svc.db.recent_trades(str(update.effective_user.id), limit=10)
     if not rows:
-        await reply(update, "🧾 <b>TRADE HISTORY</b>\n\nNo trades or withdrawals recorded yet.")
+        await reply(update, "🧾 <b>TRADE HISTORY</b>\n\nNo trades or withdrawals yet.")
         return
     await reply(update, _render_orders(rows))

@@ -74,17 +74,17 @@ def _route_label(data: dict) -> str:
 
 def parse_order(data: dict) -> SwapOrder:
     if not isinstance(data, dict):
-        raise UserFacingError("A live quote is temporarily unavailable. Please try again shortly.")
+        raise UserFacingError("A live quote is unavailable. Try again shortly.")
     error = data.get("error") or data.get("errorMessage")
     if error and not data.get("transaction"):
         raise UserFacingError(f"Quote unavailable: {escape(str(error)[:200])}")
     if not data.get("requestId") or not data.get("transaction"):
-        raise UserFacingError("No executable swap route is currently available for this token.")
+        raise UserFacingError("No swap route is available for this token.")
     try:
         in_amount = int(data["inAmount"])
         out_amount = int(data["outAmount"])
     except (KeyError, TypeError, ValueError) as exc:
-        raise UserFacingError("The quote provider returned an invalid response. Please request a new quote.") from exc
+        raise UserFacingError("The quote was invalid. Request a new one.") from exc
     other = data.get("otherAmountThreshold")
     try:
         other_amount = int(other) if other is not None else None
@@ -217,7 +217,7 @@ class JupiterClient:
         try:
             response = await self.http.get(f"{self.base}/order", params=params, headers=self._headers())
         except httpx.HTTPError as exc:
-            raise UserFacingError("The market service is not responding. Please try again shortly.") from exc
+            raise UserFacingError("The market service did not respond. Try again shortly.") from exc
         return self._parse_response(response, parse_order, "Jupiter order")
 
     async def execute(self, signed_b64: str, request_id: str) -> ExecuteResult:
@@ -226,13 +226,13 @@ class JupiterClient:
         try:
             response = await self.http.post(f"{self.base}/execute", json=body, headers=headers, timeout=45)
         except httpx.HTTPError as exc:
-            raise UserFacingError("The swap could not be submitted. Verify the token and request a fresh quote before retrying.") from exc
+            raise UserFacingError("The swap was not submitted. Check the token and request a new quote.") from exc
         if response.status_code >= 400:
             raise UserFacingError(_http_error("Swap", response))
         try:
             data = response.json()
         except Exception as exc:
-            raise UserFacingError("The swap could not be submitted. Please try again shortly.") from exc
+            raise UserFacingError("The swap was not submitted. Try again shortly.") from exc
         return parse_execute(data if isinstance(data, dict) else {})
 
     def _parse_response(self, response: httpx.Response, parser, label: str):
@@ -241,7 +241,7 @@ class JupiterClient:
         try:
             data = response.json()
         except Exception as exc:
-            raise UserFacingError("A live quote is temporarily unavailable. Please try again shortly.") from exc
+            raise UserFacingError("A live quote is unavailable. Try again shortly.") from exc
         return parser(data)
 
 
@@ -251,7 +251,7 @@ def _http_error(label: str, response: httpx.Response) -> str:
         body = body[:200] + "..."
     logger.warning("%s failed (HTTP %s): %s", label, response.status_code, body)
     if response.status_code == 429:
-        return f"{label} is busy right now (rate limited). Please wait a moment and try again."
+        return f"{label} is busy (rate limited). Wait a moment and try again."
     if response.status_code in {401, 403}:
-        return f"{label} is temporarily unavailable. Please try again shortly."
-    return f"{label} was rejected (HTTP {response.status_code}). Please try again shortly."
+        return f"{label} is unavailable. Try again shortly."
+    return f"{label} was rejected (HTTP {response.status_code}). Try again shortly."

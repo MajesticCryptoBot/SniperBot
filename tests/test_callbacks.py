@@ -47,7 +47,7 @@ async def test_callback_guard_replies_neutrally_on_unexpected_error():
 
     update = FakeUpdate()
     await handler(update, FakeContext())
-    assert update.effective_message.sent == ["⚠️ Unexpected error. Please try again shortly. Check /orders before retrying a trade."]
+    assert update.effective_message.sent == ["<b>UNEXPECTED ERROR</b>\nTry again shortly. Check /orders before retrying a trade."]
 
 
 @pytest.mark.asyncio

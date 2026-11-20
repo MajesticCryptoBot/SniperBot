@@ -124,13 +124,32 @@ def _panel_lines(address: str, info: dict, live: bool, profile: dict | None) -> 
     return lines
 
 
+async def _scan_for_auto_buy(svc, mint: str):
+    """Run the shared safety scan before an auto-buy.
+
+    Returns (report, None) when the token may be bought, or (report_or_none, reason)
+    when the buy must not be submitted.
+    """
+    safety = getattr(svc, "safety", None)
+    if safety is None:
+        return None, "Safety scan is not available."
+    try:
+        report = await safety.evaluate(mint, min_liquidity_sol=0)
+    except Exception:
+        logger.warning("auto-buy safety scan failed")
+        return None, "Safety scan did not complete."
+    if not report.ok_for_autosnipe:
+        return report, "; ".join(report.blockers) or "safety checks failed"
+    return report, None
+
+
 async def _maybe_auto_buy(update, context, svc, mint: str, info: dict) -> bool:
     """Fire the user's auto-buy switch when a LIVE token is detected.
 
-    Maestro-style: with auto-buy ON, every detected token that already has
-    a live market is bought instantly with the preset amount — no panel,
-    no confirmation. Returns True when a buy was queued (the panel is
-    skipped); False falls through to the regular detection panel.
+    With auto-buy ON, a detected token that already has a live market is
+    scanned first. A flagged token is not bought. A clear scan queues the
+    preset amount with no confirmation and no panel. Returns True when a
+    buy was queued; False falls through to the regular detection panel.
     """
     user = update.effective_user
     if user is None:
@@ -145,10 +164,39 @@ async def _maybe_auto_buy(update, context, svc, mint: str, info: dict) -> bool:
         # The worst scam class. Auto-buy never touches these — the panel
         # that follows carries the freeze warning instead.
         return False
+    report, blocked = await _scan_for_auto_buy(svc, mint)
+    if blocked:
+        flagged = report is not None and not report.ok_for_autosnipe
+        title = "<b>AUTO-BUY BLOCKED</b>" if flagged else "<b>AUTO-BUY HELD</b>"
+        lead = (
+            "The safety scan flagged this token. No buy was submitted."
+            if flagged
+            else "The safety scan did not clear this token. No buy was submitted."
+        )
+        await reply(
+            update,
+            "\n".join(
+                [
+                    title,
+                    ui_info(lead),
+                    "",
+                    card(
+                        [
+                            f"Mint: {esc(mint)}",
+                            f"Reason: {esc(blocked)}",
+                        ]
+                    ),
+                    "",
+                    ui_info("The token panel opens for review. A manual buy still asks for confirmation."),
+                ]
+            ),
+        )
+        return False
     trade_id, reason = await svc.queue.enqueue_auto_buy(str(user.id), mint, amount)
     if trade_id is None:
         await reply(update, f"<b>AUTO-BUY NOT QUEUED</b>\n\nReason: {esc(reason)}\n\n{ui_info('The token panel opens so you can act manually.')}")
         return False  # the panel still opens so the user can act manually
+    notes = bool(report and report.warnings)
     await reply(
         update,
         "\n".join(
@@ -159,11 +207,12 @@ async def _maybe_auto_buy(update, context, svc, mint: str, info: dict) -> bool:
                     [
                         f"Spend: {amount:.4f} SOL",
                         f"Mint: {esc(mint)}",
+                        f"Scan: {'passed with notes' if notes else 'clear'}",
                         f"Reference: {trade_id}",
                     ]
                 ),
                 "",
-                ui_info("Confirmation and the safety gate are skipped. Switches are in /autosnipe."),
+                ui_info("Confirmation is skipped. A flagged scan is not bought. Switches are in /autosnipe."),
             ]
         ),
     )

@@ -16,7 +16,7 @@ from sniper.handlers.common import (
 )
 from sniper.keyboards import autosnipe_keyboard, config_keyboard
 from sniper.settings_logic import SETTING_HELP, SETTING_NAMES, validate_setting
-from sniper.ui import card, esc, info, onoff
+from sniper.ui import card, dot, esc, info, onoff
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +41,10 @@ def _format_settings(svc, settings) -> str:
             "<b>AUTOMATION</b>",
             card(
                 [
-                    f"Autosnipe: {onoff(settings['autosnipe_enabled'])}",
+                    f"{dot(settings['autosnipe_enabled'])} Autosnipe: {onoff(settings['autosnipe_enabled'])}",
                     f"Entry: {float(settings['autosnipe_amount_sol']):.4f} SOL · impact {float(settings['autosnipe_max_price_impact_pct']):.2f}%",
-                    f"Auto-buy: {onoff(settings.get('auto_buy_enabled'))} · {float(settings.get('auto_buy_amount_sol') or 0):.4f} SOL",
-                    f"TP/SL: {onoff(settings.get('tp_sl_enabled'))}",
+                    f"{dot(settings.get('auto_buy_enabled'))} Auto-buy: {onoff(settings.get('auto_buy_enabled'))} · {float(settings.get('auto_buy_amount_sol') or 0):.4f} SOL",
+                    f"{dot(settings.get('tp_sl_enabled'))} TP/SL: {onoff(settings.get('tp_sl_enabled'))}",
                     f"TP +{float(settings.get('take_profit_pct') or 0):.2f}% · SL {float(settings.get('stop_loss_pct') or 0):.2f}%",
                 ]
             ),
@@ -160,13 +160,13 @@ def _autosnipe_overview(settings, entries: list[dict]) -> str:
         rows.append("Empty. Add a mint below.")
     lines.append(card(rows))
     switches = [
-        f"Autosnipe: {onoff(settings['autosnipe_enabled'])}",
+        f"{dot(settings['autosnipe_enabled'])} Autosnipe: {onoff(settings['autosnipe_enabled'])}",
         f"Impact cap: {float(settings['autosnipe_max_price_impact_pct']):.2f}%",
-        f"Auto-buy on paste: {onoff(settings.get('auto_buy_enabled'))}",
+        f"{dot(settings.get('auto_buy_enabled'))} Auto-buy on paste: {onoff(settings.get('auto_buy_enabled'))}",
     ]
     if settings.get("auto_buy_enabled"):
         switches.append(f"Amount: {float(settings.get('auto_buy_amount_sol') or 0):.4f} SOL")
-    switches.append(f"TP/SL auto-sell: {onoff(settings.get('tp_sl_enabled'))}")
+    switches.append(f"{dot(settings.get('tp_sl_enabled'))} TP/SL auto-sell: {onoff(settings.get('tp_sl_enabled'))}")
     if settings.get("tp_sl_enabled"):
         switches.append(f"TP +{float(settings.get('take_profit_pct') or 0):.1f}% · SL {float(settings.get('stop_loss_pct') or 0):.1f}%")
     lines += ["", "<b>SWITCHES</b>", card(switches), "", info("/stop pauses new trading.")]
@@ -218,7 +218,7 @@ async def toggle_autosnipe(update, context, svc) -> None:
     settings = await svc.db.get_settings(user_id)
     if settings["autosnipe_enabled"]:
         await svc.db.update_setting(user_id, "autosnipe_enabled", 0)
-        await reply(update, "<b>AUTOSNIPE OFF</b>\nWatchlist entries will not buy.")
+        await reply(update, "🔴 <b>AUTOSNIPE OFF</b>\nWatchlist entries will not buy.")
         return
     if user["trading_paused"]:
         raise UserFacingError("Trading is paused for this wallet. Use /resume before enabling automation.")
@@ -228,7 +228,7 @@ async def toggle_autosnipe(update, context, svc) -> None:
     await svc.db.update_setting(user_id, "autosnipe_enabled", 1)
     count = await svc.db.count_watch_for(user_id)
     note = "The watchlist is empty. Add a token before expecting an entry." if count == 0 else f"Watching {count} {'entry' if count == 1 else 'entries'}."
-    await reply(update, f"<b>AUTOSNIPE ON</b>\n\n{esc(note)}")
+    await reply(update, f"🟢 <b>AUTOSNIPE ON</b>\n\n{esc(note)}")
 
 
 @callback_guard
@@ -273,7 +273,7 @@ async def toggle_auto_buy(update, context, svc) -> None:
     settings = await svc.db.get_settings(user_id)
     if settings.get("auto_buy_enabled"):
         await svc.db.update_setting(user_id, "auto_buy_enabled", 0)
-        await reply(update, "<b>AUTO-BUY OFF</b>\nA pasted token opens its panel.")
+        await reply(update, "🔴 <b>AUTO-BUY OFF</b>\nA pasted token opens its panel.")
         return
     if user["trading_paused"]:
         raise UserFacingError("Trading is paused for this wallet. Use /resume before enabling automation.")
@@ -283,9 +283,9 @@ async def toggle_auto_buy(update, context, svc) -> None:
     await svc.db.update_setting(user_id, "auto_buy_enabled", 1)
     await reply(
         update,
-        "<b>AUTO-BUY ON</b>\n\n"
+        "🟢 <b>AUTO-BUY ON</b>\n\n"
         f"Amount: {float(settings.get('auto_buy_amount_sol') or 0):.4f} SOL\n\n"
-        + info("A pasted token with a live market is bought at once. Confirmation and the safety gate are skipped."),
+        + info("A pasted token with a live market is scanned, then bought. A flagged token is not bought."),
     )
 
 
@@ -295,7 +295,7 @@ async def toggle_tp_sl(update, context, svc) -> None:
     settings = await svc.db.get_settings(user_id)
     if settings.get("tp_sl_enabled"):
         await svc.db.update_setting(user_id, "tp_sl_enabled", 0)
-        await reply(update, "<b>TP/SL OFF</b>\nAutomatic exits are paused.")
+        await reply(update, "🔴 <b>TP/SL OFF</b>\nAutomatic exits are paused.")
         return
     if user["trading_paused"]:
         raise UserFacingError("Trading is paused for this wallet. Use /resume before enabling automation.")
@@ -305,7 +305,7 @@ async def toggle_tp_sl(update, context, svc) -> None:
     await svc.db.update_setting(user_id, "tp_sl_enabled", 1)
     await reply(
         update,
-        "<b>TP/SL ON</b>\n\n"
+        "🟢 <b>TP/SL ON</b>\n\n"
         f"Take-profit: +{float(settings.get('take_profit_pct') or 0):.1f}%\n"
         f"Stop-loss: {float(settings.get('stop_loss_pct') or 0):.1f}%\n\n"
         + info("The full eligible position is sold when a level is reached."),

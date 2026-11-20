@@ -61,16 +61,18 @@ HELP_SECTIONS = {
 5. A buy is queued only if every check and limit passes.
 
 <b>OTHER SWITCHES</b>
-Auto-buy on paste buys a live token you paste, with no confirmation.
+Auto-buy on paste scans a live token you paste, then buys it with no confirmation.
+A flagged token is not bought.
 Take-profit / stop-loss sells a position when your level is reached.
 
-""" + info("Auto-buy skips confirmation and the safety gate. Review limits in /config. /stop pauses new activity."),
+""" + info("Auto-buy skips confirmation. A flagged scan blocks the buy. Review limits in /config. /stop pauses new activity."),
     "safety": """<b>TOKEN SAFETY</b>
 <i>A point-in-time check. Not a guarantee.</i>
 
 The report can include freeze and mint authority, liquidity, honeypot flags, and external risk notes.
 
 Autosnipe will not buy when a critical check fails.
+Auto-buy on paste uses the same scan and will not buy a flagged token.
 A manual trade still shows the report. The decision stays yours.
 
 Missing data does not mean a token is safe.

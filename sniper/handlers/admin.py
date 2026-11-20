@@ -178,7 +178,7 @@ async def admin_inspect(update, context, svc, telegram_id: str) -> None:
                 f"Username: {esc(user.get('username'))}",
                 f"Wallet: {mono(user.get('wallet_address'))}",
                 f"Paused: {'YES' if user['trading_paused'] else 'NO'}",
-                f"Autosnipe: {('ON' if settings and settings['autosnipe_enabled'] else 'OFF')} · {waiting} waiting",
+                f"{'🟢' if settings and settings['autosnipe_enabled'] else '🔴'} Autosnipe: {('ON' if settings and settings['autosnipe_enabled'] else 'OFF')} · {waiting} waiting",
                 f"Max SOL: {settings['max_sol_per_trade'] if settings else 'n/a'}",
                 "Recent: " + ("; ".join(f"{row['side']} {row['status']}" for row in trades) or "none"),
             ]

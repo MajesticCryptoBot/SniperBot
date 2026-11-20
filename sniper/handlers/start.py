@@ -56,7 +56,7 @@ async def _onboard(update, context, *, already_member: bool) -> None:
         header,
         info("Wallet ready for this account." if not created else "A new trading wallet was created."),
         "",
-        "<b>WALLET</b>",
+        "👛 <b>WALLET</b>",
         mono(wallet),
         "",
         "<b>NEXT</b>",

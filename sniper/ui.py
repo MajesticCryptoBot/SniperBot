@@ -32,6 +32,11 @@ def onoff(enabled) -> str:
     return "ON" if enabled else "OFF"
 
 
+def dot(enabled) -> str:
+    """Green when an automation switch is on, red when it is off."""
+    return "🟢" if enabled else "🔴"
+
+
 def yesno(flag) -> str:
     return "YES" if flag else "NO"
 

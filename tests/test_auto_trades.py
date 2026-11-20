@@ -416,7 +416,28 @@ class DetectionQueue:
         return "trade-auto", None
 
 
-def make_detect_svc(settings, queue):
+class FakeSafety:
+    def __init__(self, ok=True, blockers=None, warnings=None, fail=False):
+        self.ok = ok
+        self.blockers = list(blockers or [])
+        self.warnings = list(warnings or [])
+        self.fail = fail
+
+    async def evaluate(self, mint, liquidity_sol=None, *, min_liquidity_sol=0):
+        if self.fail:
+            raise RuntimeError("scan down")
+        return type(
+            "Report",
+            (),
+            {
+                "ok_for_autosnipe": self.ok,
+                "blockers": self.blockers,
+                "warnings": self.warnings,
+            },
+        )()
+
+
+def make_detect_svc(settings, queue, safety=None):
     return type(
         "Svc",
         (),
@@ -425,6 +446,7 @@ def make_detect_svc(settings, queue):
             "prices": MonitorPrices({MINT: 0.5}),  # token is LIVE
             "db": AutoBuyDb(settings=settings),
             "queue": queue,
+            "safety": safety if safety is not None else FakeSafety(),
         },
     )()
 
@@ -437,7 +459,35 @@ async def test_auto_buy_fires_instead_of_the_panel():
     assert handled
     assert queue.buys == [("7", MINT, 0.05)]
     assert any(text.startswith("🤖") and "AUTO-BUY REQUEST QUEUED" in text for text in message.sent)
+    assert any("Scan: clear" in text for text in message.sent)
     assert not any("TOKEN DETECTED" in text for text in message.sent)  # no panel — it bought
+
+
+async def test_auto_buy_blocks_a_flagged_token():
+    queue = DetectionQueue()
+    message = FakeMessage(text=MINT)
+    safety = FakeSafety(ok=False, blockers=["Token is reported as a honeypot or cannot be sold"])
+    svc = make_detect_svc({"auto_buy_enabled": 1, "auto_buy_amount_sol": 0.05}, queue, safety)
+    handled = await detect_from_text(make_update(message), None, svc, MINT)
+    assert handled
+    assert queue.buys == []
+    assert any("AUTO-BUY BLOCKED" in text and "honeypot" in text for text in message.sent)
+    assert any("TOKEN DETECTED" in text for text in message.sent)
+
+
+async def test_auto_buy_holds_when_the_scan_fails():
+    queue = DetectionQueue()
+    message = FakeMessage(text=MINT)
+    svc = make_detect_svc(
+        {"auto_buy_enabled": 1, "auto_buy_amount_sol": 0.05},
+        queue,
+        FakeSafety(fail=True),
+    )
+    handled = await detect_from_text(make_update(message), None, svc, MINT)
+    assert handled
+    assert queue.buys == []
+    assert any("AUTO-BUY HELD" in text for text in message.sent)
+    assert any("TOKEN DETECTED" in text for text in message.sent)
 
 
 async def test_auto_buy_off_shows_the_panel():

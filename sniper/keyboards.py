@@ -55,15 +55,15 @@ def token_options_keyboard(mint: str) -> InlineKeyboardMarkup:
 
 def autosnipe_keyboard(entries: list[dict], enabled: bool, auto_buy_on: bool = False, tp_sl_on: bool = False) -> InlineKeyboardMarkup:
     rows = [[InlineKeyboardButton(
-        f"Autosnipe · {'ON' if enabled else 'OFF'}",
+        f"{'🟢' if enabled else '🔴'} Autosnipe · {'ON' if enabled else 'OFF'}",
         callback_data="snipe:toggle",
     )]]
     rows.append([InlineKeyboardButton(
-        f"Auto-buy · {'ON' if auto_buy_on else 'OFF'}",
+        f"{'🟢' if auto_buy_on else '🔴'} Auto-buy · {'ON' if auto_buy_on else 'OFF'}",
         callback_data="snipe:autobuy",
     )])
     rows.append([InlineKeyboardButton(
-        f"TP/SL · {'ON' if tp_sl_on else 'OFF'}",
+        f"{'🟢' if tp_sl_on else '🔴'} TP/SL · {'ON' if tp_sl_on else 'OFF'}",
         callback_data="snipe:tpsl",
     )])
     for entry in entries[:10]:

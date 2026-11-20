@@ -66,7 +66,7 @@ async def summary(update, context) -> None:
     holdings = []
     sol_balance = lamports_to_sol(lamports)
     lines = ["<b>PORTFOLIO</b>", info("Balances from the wallet. Values are indicative."), ""]
-    lines.append(card(["Wallet", mono(user["wallet_address"])]))
+    lines.append(card(["👛 Wallet", mono(user["wallet_address"])]))
     lines.append("")
     if sol_usd <= 0:
         lines.append(f"SOL: {sol_balance:.6f}")

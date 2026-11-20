@@ -451,12 +451,11 @@ class TradeQueue:
     async def enqueue_auto_buy(self, telegram_id: str, mint: str, amount_sol: float) -> tuple[str | None, str | None]:
         """Queue the instant buy behind the auto-buy-on-paste switch.
 
-        The token came from the user's own message, so like every manual
-        trade it skips the autosnipe safety checks; the spend guards and
-        the price-impact limit still apply at execution time. Each paste
-        is a deliberate act and gets a fresh idempotency key — paste the
-        same token twice and you buy twice. Returns (trade_id, None) or
-        (None, reason)."""
+        The paste handler has already run the safety scan. Spend guards
+        and the price-impact limit still apply at execution time. Each
+        paste is a deliberate act and gets a fresh idempotency key —
+        paste the same token twice and you buy twice. Returns
+        (trade_id, None) or (None, reason)."""
         user = await self.db.get_user(telegram_id)
         settings = await self.db.get_settings(telegram_id)
         if not user or not settings or not user.get("wallet_address"):
@@ -512,7 +511,7 @@ class TradeQueue:
                         ]
                     ),
                     "",
-                    info("Confirmation and the safety gate are skipped. /stop pauses new activity."),
+                    info("Confirmation is skipped. The paste scan already ran. /stop pauses new activity."),
                 ]
             ),
         )

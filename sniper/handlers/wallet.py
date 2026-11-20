@@ -41,7 +41,7 @@ async def wallet(update, context) -> None:
         update,
         "\n".join(
             [
-                "<b>WALLET</b>",
+                "👛 <b>WALLET</b>",
                 info("Connected trading wallet."),
                 "",
                 card(

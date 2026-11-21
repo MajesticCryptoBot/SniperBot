@@ -24,8 +24,25 @@ def mono(value) -> str:
 
 
 def info(text: str) -> str:
-    """Italic footer. Kept short; the text is escaped."""
-    return f"<i>{esc(text)}</i>"
+    """Italic guidance line. Always starts with the information mark."""
+    return f"ℹ️ <i>{esc(text)}</i>"
+
+
+def sol(amount, *, signed: bool = False) -> str:
+    """A SOL amount for panels. Trailing zeros are dropped. Zero is 0.0."""
+    try:
+        value = float(amount)
+    except (TypeError, ValueError):
+        return f"💰 {esc(amount)} SOL"
+    if abs(value) < 5e-7:
+        text = "0.0"
+    else:
+        text = f"{value:.6f}".rstrip("0").rstrip(".")
+        if "." not in text:
+            text += ".0"
+    if signed and value > 0:
+        text = f"+{text}"
+    return f"💰 {text} SOL"
 
 
 def onoff(enabled) -> str:
@@ -51,7 +68,7 @@ def desk(title: str, rows: list[str] | None = None, *, lead: str | None = None, 
     """Standard panel: title, optional purpose line, optional card, optional footer."""
     parts = [title]
     if lead:
-        parts.append(f"<i>{esc(lead)}</i>")
+        parts.append(info(lead))
     if rows:
         parts += ["", card(rows)]
     if footer:

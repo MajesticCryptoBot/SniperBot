@@ -4,8 +4,7 @@ from sniper.ui import info
 
 # Telegram is the product. Copy stays short, status-led, and free of decoration.
 
-START_INTRO = """<b>SOLANA SNIPER</b>
-<i>Private terminal. The bot acts only on tokens you submit.</i>
+START_INTRO = "<b>SOLANA SNIPER</b>\n" + info("Private terminal. The bot acts only on tokens you submit.") + """
 
 <b>TRADING</b>
 Market buy and sell, with a live quote before anything is signed.
@@ -19,24 +18,23 @@ Wallet, portfolio, history, withdrawals, and spend limits.
 
 """ + info("Join both channels below, then verify access.")
 
-HELP = """<b>COMMANDS</b>
-<i>Open a command, then answer the prompt. Arguments are optional.</i>
+HELP = "<b>COMMANDS</b>\n" + info("Open a command, then answer the prompt. Arguments are optional.") + """
 
 <b>TRADING</b>
 /buy · buy panel
 /sell · holdings, then a sell panel
-/scan · token safety report
-/triggers · limit orders and trailing stops
-/withdraw · SOL withdrawal
+🛡️ /scan · token safety report
+🕓 /triggers · limit orders and trailing stops
+💸 /withdraw · SOL withdrawal
 
 <b>PORTFOLIO</b>
-/wallet · address, balance, controls
-/summary · holdings and value
-/orders · trades and withdrawals
+💳 /wallet · address, balance, controls
+📈 /summary · holdings and value
+🧾 /orders · trades and withdrawals
 
 <b>AUTOMATION</b>
-/autosnipe · watchlist and switches
-/config · limits and execution
+🎯 /autosnipe · watchlist and switches
+⚙️ /config · limits and execution
 
 <b>ACCOUNT</b>
 /stop · pause new trading
@@ -50,13 +48,12 @@ Paste a mint, or a supported token or pair link, to open its panel.
 """ + info("Choose a topic below for a short guide.")
 
 HELP_SECTIONS = {
-    "autosnipe": """<b>AUTOSNIPE</b>
-<i>Watches only tokens you add. It does not scan the market.</i>
+    "autosnipe": "🎯 <b>AUTOSNIPE</b>\n" + info("Watches only tokens you add. It does not scan the market.") + """
 
 <b>STEPS</b>
 1. Add a mint you trust.
 2. Set the SOL amount.
-3. Leave Autosnipe on.
+3. Leave 🎯 Autosnipe on.
 4. A live market runs the safety checks.
 5. A buy is queued only if every check and limit passes.
 
@@ -66,20 +63,18 @@ A flagged token is not bought.
 Take-profit / stop-loss sells a position when your level is reached.
 
 """ + info("Auto-buy skips confirmation. A flagged scan blocks the buy. Review limits in /config. /stop pauses new activity."),
-    "safety": """<b>TOKEN SAFETY</b>
-<i>A point-in-time check. Not a guarantee.</i>
+    "safety": "🛡️ <b>TOKEN SAFETY</b>\n" + info("A point-in-time check. Not a guarantee.") + """
 
 The report can include freeze and mint authority, liquidity, honeypot flags, and external risk notes.
 
-Autosnipe will not buy when a critical check fails.
+🎯 Autosnipe will not buy when a critical check fails.
 Auto-buy on paste uses the same scan and will not buy a flagged token.
 A manual trade still shows the report. The decision stays yours.
 
 Missing data does not mean a token is safe.
 
 """ + info("Use /scan and send a mint."),
-    "security": """💳 <b>WALLET SECURITY</b>
-<i>Treat the connected wallet as a trading wallet only.</i>
+    "security": "💳 <b>WALLET SECURITY</b>\n" + info("Treat the connected wallet as a trading wallet only.") + """
 
 Keys are encrypted at rest and are never shown in chat.
 Import messages are deleted immediately when Telegram allows it.
@@ -91,8 +86,7 @@ Never share a recovery phrase or private key. It is requested only inside /impor
 
 HELP_MENU = "<b>HELP</b>\n" + info("Choose a topic.")
 
-IMPORT_WARNING = """💳 <b>WALLET IMPORT</b>
-<i>This replaces the wallet connected to this account.</i>
+IMPORT_WARNING = "⚠️ 💳 <b>WALLET IMPORT</b>\n" + info("This replaces the wallet connected to this account.") + """
 
 Use a dedicated trading wallet. Fund only what you are prepared to trade.
 

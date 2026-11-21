@@ -25,7 +25,7 @@ from sniper.signing import partial_sign
 from sniper.solana_service import WSOL
 from sniper.solana_tx import build_sol_transfer
 from sniper.timeutil import age_seconds, start_of_utc_day, utcnow
-from sniper.ui import card, esc, info, mono
+from sniper.ui import card, esc, info, mono, sol
 
 logger = logging.getLogger(__name__)
 
@@ -309,12 +309,12 @@ class TradeQueue:
             preview.chat_id,
             "\n".join(
                 [
-                    "<b>AUTOSNIPE TRIGGERED</b>",
+                    "🎯 <b>AUTOSNIPE TRIGGERED</b>",
                     "",
                     card(
                         [
                             f"Mint: {esc(mint)}",
-                            f"Entry: {amount:.4f} SOL",
+                            f"Entry: {sol(amount)}",
                             f"Reference: {trade_id}",
                             "",
                             "Safety: passed",
@@ -363,7 +363,7 @@ class TradeQueue:
             amount_sol=amount,
             amount_in_raw=None,
             destination=None,
-            label=f"limit buy {amount:.4f} SOL",
+            label=f"limit buy {sol(amount)}",
             created_monotonic=0,
             slippage_bps=int(row["slippage_bps"]) if row.get("slippage_bps") else None,
             priority_fee_lamports=int(row["priority_fee_lamports"]) if row.get("priority_fee_lamports") else None,
@@ -383,7 +383,7 @@ class TradeQueue:
                         [
                             f"Mint: {esc(mint)}",
                             f"Trigger: ${target:g}",
-                            f"Size: {amount:.4f} SOL",
+                            f"Size: {sol(amount)}",
                             f"Reference: {trade_id}",
                         ]
                     ),
@@ -489,7 +489,7 @@ class TradeQueue:
             amount_sol=amount_sol,
             amount_in_raw=None,
             destination=None,
-            label=f"auto buy {amount_sol:.4f} SOL",
+            label=f"auto buy {sol(amount_sol)}",
             created_monotonic=0,
         )
         try:
@@ -506,7 +506,7 @@ class TradeQueue:
                     card(
                         [
                             f"Mint: {esc(mint)}",
-                            f"Size: {amount_sol:.4f} SOL",
+                            f"Size: {sol(amount_sol)}",
                             f"Reference: {trade_id}",
                         ]
                     ),
@@ -922,8 +922,8 @@ class TradeQueue:
             reserve = 5000 + int(settings["priority_fee_lamports"]) + 10000
             if lamports + reserve > balance:
                 raise UserFacingError(
-                    f"Insufficient SOL. Current balance: {balance / 1_000_000_000:.6f} SOL. "
-                    f"Keep approximately {reserve / 1_000_000_000:.6f} SOL available for network fees and reserve."
+                    f"Insufficient SOL. Current balance: {sol(balance / 1_000_000_000)}. "
+                    f"Keep approximately {sol(reserve / 1_000_000_000)} available for network fees and reserve."
                 )
             blockhash = await self.rpc.latest_blockhash()
             raw = build_sol_transfer(
@@ -946,7 +946,7 @@ class TradeQueue:
                     + card(
                         [
                             f"Reference: {trade['id']}",
-                            f"Amount: {amount:.6f} SOL",
+                            f"Amount: {sol(amount)}",
                             f"To: {esc(trade['destination'])}",
                             "Signature",
                             mono(signature),
@@ -961,7 +961,7 @@ class TradeQueue:
                     + card(
                         [
                             f"Reference: {trade['id']}",
-                            f"Amount: {amount:.6f} SOL",
+                            f"Amount: {sol(amount)}",
                             f"To: {esc(trade['destination'])}",
                             "Signature",
                             mono(signature),

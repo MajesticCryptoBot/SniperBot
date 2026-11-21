@@ -30,7 +30,7 @@ from sniper.handlers.trading import run_scan
 from sniper.handlers.trade_panel import open_buy_panel, open_sell_token_panel
 from sniper.keyboards import token_options_keyboard
 from sniper.solana_service import WSOL
-from sniper.ui import card, esc
+from sniper.ui import card, esc, sol
 from sniper.ui import info as ui_info
 
 logger = logging.getLogger(__name__)
@@ -116,9 +116,9 @@ def _panel_lines(address: str, info: dict, live: bool, profile: dict | None) -> 
         body.append("Market data is not available yet. The token may be new, or not indexed yet.")
     lines.append(card(body))
     if info.get("freeze_authority"):
-        lines.append("CRITICAL: freeze authority is active. The token can be frozen.")
+        lines.append("⚠️ freeze authority is active. The token can be frozen.")
     elif info.get("mint_authority"):
-        lines.append("Mint authority is active. Use /scan for the full report.")
+        lines.append("⚠️ Mint authority is active. Use /scan for the full report.")
     lines.append("")
     lines.append(ui_info("Choose an action below. Refresh loads the latest data."))
     return lines
@@ -205,14 +205,14 @@ async def _maybe_auto_buy(update, context, svc, mint: str, info: dict) -> bool:
                 "",
                 card(
                     [
-                        f"Spend: {amount:.4f} SOL",
+                        f"Spend: {sol(amount)}",
                         f"Mint: {esc(mint)}",
                         f"Scan: {'passed with notes' if notes else 'clear'}",
                         f"Reference: {trade_id}",
                     ]
                 ),
                 "",
-                ui_info("Confirmation is skipped. A flagged scan is not bought. Switches are in /autosnipe."),
+                ui_info("Confirmation is skipped. A flagged scan is not bought. Switches are in 🎯 /autosnipe."),
             ]
         ),
     )

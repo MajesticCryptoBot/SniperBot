@@ -42,11 +42,11 @@ def token_options_keyboard(mint: str) -> InlineKeyboardMarkup:
                 InlineKeyboardButton("Sell", callback_data=f"tok:sell:{mint}"),
             ],
             [
-                InlineKeyboardButton("Watchlist", callback_data=f"tok:auto:{mint}"),
-                InlineKeyboardButton("Safety", callback_data=f"tok:scan:{mint}"),
+                InlineKeyboardButton("👁️ Watchlist", callback_data=f"tok:auto:{mint}"),
+                InlineKeyboardButton("🛡️ Safety", callback_data=f"tok:scan:{mint}"),
             ],
             [
-                InlineKeyboardButton("Refresh", callback_data=f"tok:refresh:{mint}"),
+                InlineKeyboardButton("🔄 Refresh", callback_data=f"tok:refresh:{mint}"),
                 InlineKeyboardButton("Close", callback_data="tok:close"),
             ],
         ]
@@ -55,7 +55,7 @@ def token_options_keyboard(mint: str) -> InlineKeyboardMarkup:
 
 def autosnipe_keyboard(entries: list[dict], enabled: bool, auto_buy_on: bool = False, tp_sl_on: bool = False) -> InlineKeyboardMarkup:
     rows = [[InlineKeyboardButton(
-        f"{'🟢' if enabled else '🔴'} Autosnipe · {'ON' if enabled else 'OFF'}",
+        f"🎯 Autosnipe · {'🟢 ON' if enabled else '🔴 OFF'}",
         callback_data="snipe:toggle",
     )]]
     rows.append([InlineKeyboardButton(
@@ -72,7 +72,7 @@ def autosnipe_keyboard(entries: list[dict], enabled: bool, auto_buy_on: bool = F
                 f"Remove · {str(entry['token_mint'])[:8]}",
                 callback_data=f"snipe:remove:{entry['id']}",
             )])
-    rows.append([InlineKeyboardButton("Add token", callback_data="snipe:add")])
+    rows.append([InlineKeyboardButton("👁️ Add token", callback_data="snipe:add")])
     return InlineKeyboardMarkup(rows)
 
 
@@ -108,11 +108,11 @@ def wallet_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton("Withdraw", callback_data="wal:withdraw"),
-                InlineKeyboardButton("Portfolio", callback_data="wal:summary"),
+                InlineKeyboardButton("💸 Withdraw", callback_data="wal:withdraw"),
+                InlineKeyboardButton("📈 Portfolio", callback_data="wal:summary"),
             ],
             [
-                InlineKeyboardButton("Refresh", callback_data="wal:refresh"),
+                InlineKeyboardButton("🔄 Refresh", callback_data="wal:refresh"),
                 InlineKeyboardButton("⚙️ Settings", callback_data="wal:config"),
             ],
         ]
@@ -123,8 +123,8 @@ def help_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton("Autosnipe", callback_data="help:autosnipe"),
-                InlineKeyboardButton("Safety", callback_data="help:safety"),
+                InlineKeyboardButton("🎯 Autosnipe", callback_data="help:autosnipe"),
+                InlineKeyboardButton("🛡️ Safety", callback_data="help:safety"),
             ],
             [InlineKeyboardButton("💳 Wallet security", callback_data="help:security")],
         ]
@@ -135,8 +135,8 @@ def help_topic_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton("Autosnipe", callback_data="help:autosnipe"),
-                InlineKeyboardButton("Safety", callback_data="help:safety"),
+                InlineKeyboardButton("🎯 Autosnipe", callback_data="help:autosnipe"),
+                InlineKeyboardButton("🛡️ Safety", callback_data="help:safety"),
             ],
             [
                 InlineKeyboardButton("💳 Wallet security", callback_data="help:security"),

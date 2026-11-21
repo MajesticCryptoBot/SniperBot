@@ -6,7 +6,7 @@ from sniper.errors import UserFacingError
 from sniper.handlers import flows
 from sniper.handlers.common import command, reply, services
 from sniper.solana_service import WSOL
-from sniper.ui import card, esc, info, mono
+from sniper.ui import card, esc, info, mono, sol
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +140,7 @@ async def admin_fees(update, context) -> None:
         lines.append("")
         lines.append("<b>CHARGED</b>")
         for row in totals:
-            value = f" · ≈{row['value_sol']:.6f} SOL" if row["fee_mint"] == WSOL else ""
+            value = f" · ≈{sol(row['value_sol'])}" if row["fee_mint"] == WSOL else ""
             lines.append(f"  {row['fee_mint']}: {row['trades']} trade(s){value}")
     try:
         claimable = await svc.rpc.get_token_accounts(cfg.jupiter_referral_account)
@@ -178,7 +178,7 @@ async def admin_inspect(update, context, svc, telegram_id: str) -> None:
                 f"Username: {esc(user.get('username'))}",
                 f"Wallet: {mono(user.get('wallet_address'))}",
                 f"Paused: {'YES' if user['trading_paused'] else 'NO'}",
-                f"{'🟢' if settings and settings['autosnipe_enabled'] else '🔴'} Autosnipe: {('ON' if settings and settings['autosnipe_enabled'] else 'OFF')} · {waiting} waiting",
+                f"🎯 Autosnipe: {('🟢 ON' if settings and settings['autosnipe_enabled'] else '🔴 OFF')} · {waiting} waiting",
                 f"Max SOL: {settings['max_sol_per_trade'] if settings else 'n/a'}",
                 "Recent: " + ("; ".join(f"{row['side']} {row['status']}" for row in trades) or "none"),
             ]

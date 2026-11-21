@@ -16,7 +16,7 @@ from sniper.keyboards import trade_keyboard
 from sniper.solana_service import WSOL
 from sniper.timeutil import start_of_utc_day
 from sniper.trade_queue import PendingPreview
-from sniper.ui import card, esc, info
+from sniper.ui import card, esc, info, sol
 
 logger = logging.getLogger(__name__)
 PREVIEW_TTL = 120
@@ -106,7 +106,7 @@ async def build_buy_preview(update, context, svc, mint: str, amount_sol: float, 
         raise UserFacingError(f"Unable to retrieve token information for the buy quote: {esc(exc)}") from exc
     safety = await svc.safety.evaluate(mint, min_liquidity_sol=0)
     preview_id = uuid.uuid4().hex
-    label = f"{amount_sol:.4f} SOL"
+    label = f"{sol(amount_sol)}"
     _store_preview(
         svc,
         PendingPreview(
@@ -132,7 +132,7 @@ async def build_buy_preview(update, context, svc, mint: str, amount_sol: float, 
         "",
         card(
             [
-                f"Spend: {amount_sol:.6f} SOL",
+                f"Spend: {sol(amount_sol)}",
                 f"Mint: {esc(mint)}",
                 f"Est. output: {raw_to_ui(order.out_amount, decimals):.6f} tokens",
                 f"Price impact: {order.price_impact_pct:.2f}%",
@@ -146,7 +146,7 @@ async def build_buy_preview(update, context, svc, mint: str, amount_sol: float, 
         safety.summary(),
     ]
     if high:
-        lines.append("HIGH VALUE. Confirm the amount and the asset.")
+        lines.append("⚠️ HIGH VALUE. Confirm the amount and the asset.")
     lines.append(info("A fresh quote is taken at confirmation. Output may differ."))
     await reply(update, "\n".join(lines), trade_keyboard(preview_id, high, label))
 
@@ -208,7 +208,7 @@ async def build_sell_preview(update, context, svc, mint: str, spec_text: str, *,
                 f"Mint: {esc(mint)}",
                 f"Sell quantity: {esc(label)}",
                 f"Wallet balance: {raw_to_ui(raw, decimals):.6f} / {raw_to_ui(balance_raw, decimals):.6f}",
-                f"Est. proceeds: {out_sol:.6f} SOL",
+                f"Est. proceeds: {sol(out_sol)}",
                 *([f"Bot fee: {svc.cfg.bot_fee_bps / 100:.2f}% (included in proceeds)"] if fee_on else []),
                 f"Price impact: {order.price_impact_pct:.2f}%",
                 f"Slippage: {effective_slip / 100:.2f}%{slip_origin}",
@@ -220,7 +220,7 @@ async def build_sell_preview(update, context, svc, mint: str, spec_text: str, *,
         "<b>RISK</b>",
     ]
     if high:
-        lines.append("HIGH VALUE. Confirm the quantity and the proceeds.")
+        lines.append("⚠️ HIGH VALUE. Confirm the quantity and the proceeds.")
     lines.append(info("A fresh quote is taken at confirmation. Keep SOL for network fees."))
     await reply(update, "\n".join(lines), trade_keyboard(preview_id, high, label))
 
@@ -233,7 +233,7 @@ async def build_withdraw_preview(update, context, svc, destination: str, amount_
         raise UserFacingError("Destination is this wallet. No withdrawal was created.")
     await _check_spend(svc, user, settings, amount_sol)
     preview_id = uuid.uuid4().hex
-    label = f"{amount_sol:.4f} SOL"
+    label = f"{sol(amount_sol)}"
     _store_preview(
         svc,
         PendingPreview(
@@ -260,8 +260,8 @@ async def build_withdraw_preview(update, context, svc, destination: str, amount_
                 [
                     f"From: {esc(user['wallet_address'])}",
                     f"To: {esc(destination)}",
-                    f"Amount: {amount_sol:.6f} SOL",
-                    f"Balance: {balance:.6f} SOL",
+                    f"Amount: {sol(amount_sol)}",
+                    f"Balance: {sol(balance)}",
                 ]
             ),
             "",
@@ -277,7 +277,7 @@ async def run_scan(update, svc, mint: str) -> None:
         update,
         "\n".join(
             [
-                "<b>SAFETY REPORT</b>",
+                "🛡️ <b>SAFETY REPORT</b>",
                 "",
                 card([f"Mint: {esc(mint)}", "", report.summary()]),
                 "",
@@ -370,7 +370,7 @@ SELL_MINT_PROMPT = "<b>SELL</b>\n\nSend the token mint to sell."
 SELL_AMOUNT_PROMPT = "<b>SELL SIZE</b>\n\nEnter a token amount (example: 1.5) or a percentage of the holding (example: 50%)."
 WITHDRAW_ADDRESS_PROMPT = "<b>WITHDRAWAL</b>\n\nSend the Solana address that should receive the SOL."
 WITHDRAW_AMOUNT_PROMPT = "<b>WITHDRAWAL AMOUNT</b>\n\nEnter the SOL amount to send."
-SCAN_MINT_PROMPT = "<b>SAFETY REPORT</b>\n\nSend the token mint to assess."
+SCAN_MINT_PROMPT = "🛡️ <b>SAFETY REPORT</b>\n\nSend the token mint to assess."
 
 
 def _register_flows() -> None:

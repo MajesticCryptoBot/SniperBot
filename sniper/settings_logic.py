@@ -21,8 +21,8 @@ SETTING_HELP = (
     "priority_fee · lamports\n"
     "max_sol · SOL per trade\n"
     "daily_limit · SOL per UTC day\n"
-    "snipe_amount · autosnipe SOL\n"
-    "snipe_impact · autosnipe impact cap %\n"
+    "snipe_amount · 🎯 autosnipe SOL\n"
+    "snipe_impact · 🎯 autosnipe impact cap %\n"
     "impact · manual impact cap %\n"
     "auto_buy_amount · auto-buy SOL\n"
     "take_profit · exit gain %\n"
@@ -58,12 +58,12 @@ def validate_setting(name: str, raw: str, *, absolute_max_sol: float) -> tuple[s
         if key == "snipe_amount":
             value = float(parse_positive_decimal(text))
             if value > absolute_max_sol:
-                raise AmountError(f"Autosnipe allocation cannot exceed {{absolute_max_sol}} SOL.")
+                raise AmountError(f"🎯 Autosnipe allocation cannot exceed {{absolute_max_sol}} SOL.")
             return "autosnipe_amount_sol", value
         if key == "snipe_impact":
             value = float(parse_positive_decimal(text))
             if value > 95:
-                raise AmountError("Autosnipe price-impact cap cannot exceed 95%.")
+                raise AmountError("🎯 Autosnipe price-impact cap cannot exceed 95%.")
             return "autosnipe_max_price_impact_pct", value
         if key == "impact":
             value = float(parse_positive_decimal(text))

@@ -24,7 +24,7 @@ def _row(**over):
 def test_failed_auto_snipe_card_is_scannable():
     text = format_trade_row(1, _row())
     lines = text.splitlines()
-    assert lines[0] == "01  BUY  |  FAILED  |  0.0500 SOL"
+    assert lines[0] == "01  BUY  |  FAILED  |  💰 0.05 SOL"
     assert "AUTOSNIPE" in lines[1] and "14 Nov 2026 · 17:06 UTC" in lines[1]
     assert lines[2] == "     Token: 3xCW9mrUuEUGwAfGYemc83L4Efao5ecKPngKxWoZpump"
     assert lines[3] == "     Details: Quote unavailable: Insufficient funds"
@@ -43,10 +43,10 @@ def test_confirmed_manual_card_shows_signature_and_pnl():
             amount_sol=0.1,
         ),
     )
-    assert "02  BUY  |  CONFIRMED  |  0.1000 SOL" in text
+    assert "02  BUY  |  CONFIRMED  |  💰 0.1 SOL" in text
     assert "AUTOSNIPE" not in text
     assert "Signature:" in text
-    assert "📈 P&L: +0.0100 SOL" in text
+    assert "📈 P&L: 💰 +0.01 SOL" in text
     assert "WARNINGS:" not in text
 
 

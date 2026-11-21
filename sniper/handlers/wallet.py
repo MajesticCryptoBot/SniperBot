@@ -13,7 +13,7 @@ from sniper.handlers.settings import config_command
 from sniper.keyboards import import_confirm_keyboard, import_go_keyboard, wallet_keyboard
 from sniper.signing import parse_keypair
 from sniper.texts import IMPORT_WARNING
-from sniper.ui import card, esc, info, mono
+from sniper.ui import card, esc, info, mono, sol
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ async def wallet(update, context) -> None:
     row = await svc.db.get_user(user_id)
     try:
         lamports = await svc.rpc.get_balance_lamports(row["wallet_address"])
-        balance = f"{lamports_to_sol(lamports):.6f} SOL"
+        balance = sol(lamports_to_sol(lamports))
     except Exception as exc:
         from sniper.errors import UserFacingError
 

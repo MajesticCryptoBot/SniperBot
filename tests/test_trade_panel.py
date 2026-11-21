@@ -180,10 +180,10 @@ async def test_buy_panel_opens_with_presets_and_market_data():
     await trade_panel.buy_entry(make_update(message=message), context)
     assert len(message.sent) == 1
     text = message.sent[0]
-    for marker in ("🛒", "Dogwifhat (WIF)", MINT, "0.500000 SOL", "Slippage: 15.00% (account default)"):
+    for marker in ("🛒", "Dogwifhat (WIF)", MINT, "💰 0.5 SOL", "Slippage: 15.00% (account default)"):
         assert marker in text, marker
     labels = [b.text for b in buttons(message.markups[0])]
-    for preset in ("0.01 SOL", "0.05 SOL", "0.1 SOL", "0.5 SOL", "1 SOL"):
+    for preset in ("💰 0.01 SOL", "💰 0.05 SOL", "💰 0.1 SOL", "💰 0.5 SOL", "💰 1 SOL"):
         assert preset in labels, preset
     # no flow was opened — the panel waits for taps
     assert flows.active_flow(context) is None
@@ -209,10 +209,10 @@ async def test_buy_reply_with_ca_opens_the_panel_below():
     await flows.handle(make_update(message=message), context, MINT)
     assert context.bot.edited == []  # nothing edited — the panel is a new message
     panel = message.sent[-1]
-    for marker in ("🛒", MINT, "Dogwifhat (WIF)", "0.500000 SOL"):
+    for marker in ("🛒", MINT, "Dogwifhat (WIF)", "💰 0.5 SOL"):
         assert marker in panel, marker
     labels = [b.text for b in buttons(message.markups[-1])]
-    assert "0.01 SOL" in labels and any("Confirm buy" in label for label in labels)
+    assert "💰 0.01 SOL" in labels and any("Confirm buy" in label for label in labels)
     assert trade_panel._panel(context)["mint"] == MINT
     assert context.user_data.get(flows.STATE_KEY) is None  # flow finished
 
@@ -267,7 +267,7 @@ async def test_amount_tap_edits_panel_in_place():
     context = FakeContext()
     context.user_data[trade_panel.PANEL_KEY] = {"side": "buy", "mint": MINT, "mode": "main"}
     await trade_panel.on_trade_panel_callback(make_update(query=query), context)
-    assert "Spend: 0.050000 SOL" in query.edited[0][0]
+    assert "Spend: 💰 0.05 SOL" in query.edited[0][0]
     assert trade_panel._panel(context)["amount"] == 0.05
 
 
@@ -391,7 +391,7 @@ async def test_custom_buy_amount_survives_the_panel_refresh():
     assert flows.active_flow(context) == "panel_buy_amount"
     await flows.handle(make_update(message=message), context, "0.25")
     assert trade_panel._panel(context)["amount"] == 0.25
-    assert "Spend: 0.250000 SOL" in message.sent[-1]
+    assert "Spend: 💰 0.25 SOL" in message.sent[-1]
 
 
 async def test_limit_buy_flow_arms_trigger():

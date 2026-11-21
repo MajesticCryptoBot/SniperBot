@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 import httpx
 
 from sniper.errors import UserFacingError
-from sniper.ui import esc
+from sniper.ui import esc, sol
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class SafetyReport:
             lines.append("<b>BLOCKED</b>")
             lines.append(esc("; ".join(self.blockers)))
         if self.warnings:
-            lines.append("<b>WARNINGS</b>")
+            lines.append("⚠️ <b>WARNINGS</b>")
             lines.append(esc("; ".join(self.warnings)))
         if not self.blockers and not self.warnings:
             lines.append("No blocking issue in the completed checks.")
@@ -41,7 +41,7 @@ class SafetyReport:
         if self.lp_locked_pct is not None:
             extra.append(f"LP {self.lp_locked_pct:.1f}%")
         if self.liquidity_sol is not None:
-            extra.append(f"Liquidity ~{self.liquidity_sol:.2f} SOL")
+            extra.append(f"Liquidity ~{sol(self.liquidity_sol)}")
         if extra:
             lines.append(" · ".join(extra))
         return "\n".join(lines)
@@ -113,7 +113,7 @@ class SafetyService:
                 report.blockers.append("could not measure pool liquidity")
             elif report.liquidity_sol + 1e-9 < min_liquidity_sol:
                 report.blockers.append(
-                    f"liquidity {report.liquidity_sol:.2f} SOL is below the minimum {min_liquidity_sol:.2f} SOL"
+                    f"liquidity {sol(report.liquidity_sol)} is below the minimum {sol(min_liquidity_sol)}"
                 )
         report.ok_for_autosnipe = not report.blockers
         return report

@@ -6,7 +6,7 @@ from sniper.errors import UserFacingError
 from sniper.handlers.common import command, reply, services
 from sniper.solana_service import WSOL
 from sniper.timeutil import parse_utc
-from sniper.ui import card, esc, info, mono
+from sniper.ui import card, esc, info, mono, sol
 
 _SIDE_TITLE = {"buy": "BUY", "sell": "SELL", "withdraw": "WITHDRAW"}
 _STATUS_TITLE = {
@@ -30,11 +30,11 @@ def format_trade_row(index: int, row: dict) -> str:
     status = str(row.get("status") or "unknown")
     side = _SIDE_TITLE.get(row.get("side"), str(row.get("side")).upper())
     amount = row.get("amount_sol")
-    amount_text = f"{float(amount):.4f} SOL" if amount is not None else "n/a"
+    amount_text = sol(amount) if amount is not None else "n/a"
     lines = [f"{index:02d}  {side}  |  {status.upper()}  |  {amount_text}"]
     tags = []
     if row.get("source") == "autosnipe":
-        tags.append("AUTOSNIPE")
+        tags.append("🎯 AUTOSNIPE")
     tags.append(_fmt_time(row.get("created_at") or ""))
     lines.append("     " + " · ".join(tags))
     if row.get("destination"):
@@ -43,7 +43,7 @@ def format_trade_row(index: int, row: dict) -> str:
         lines.append(f"     Token: {esc(row['token_mint'])}")
     pnl = row.get("realized_pnl_sol")
     if pnl is not None:
-        lines.append(f"     📈 P&L: {float(pnl):+.4f} SOL")
+        lines.append(f"     📈 P&L: {sol(pnl, signed=True)}")
     if row.get("signature"):
         lines.append(f"     Signature: {esc(row['signature'])}")
     if row.get("error"):
@@ -69,9 +69,9 @@ async def summary(update, context) -> None:
     lines.append(card(["💳 Wallet", "🔗 Solana", mono(user["wallet_address"])]))
     lines.append("")
     if sol_usd <= 0:
-        lines.append(f"SOL: {sol_balance:.6f}")
+        lines.append(sol(sol_balance))
     else:
-        lines.append(f"SOL: {sol_balance:.6f} (${sol_balance * sol_usd:,.2f})")
+        lines.append(f"{sol(sol_balance)} (${sol_balance * sol_usd:,.2f})")
     positions = {row["token_mint"]: row for row in await svc.db.list_positions(user["telegram_id"])}
     if not accounts:
         lines += ["", "📈 <b>HOLDINGS</b>", "None."]
@@ -91,7 +91,7 @@ async def summary(update, context) -> None:
             pnl_usd = usd - cost_usd
             cost_text = f"\nCost ${cost_usd:,.2f} · PnL ${pnl_usd:+,.2f}"
         elif cost:
-            cost_text = f"\nCost {float(cost['cost_basis_sol']):.4f} SOL"
+            cost_text = f"\nCost {sol(cost['cost_basis_sol'])}"
         value = f"${usd:,.2f}" if usd is not None else "n/a"
         block = card([
             f"{item['mint'][:8]}…{item['mint'][-4:]}",

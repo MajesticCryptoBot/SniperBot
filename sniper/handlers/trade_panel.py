@@ -34,7 +34,7 @@ from sniper.handlers.common import (
 )
 from sniper.handlers.trading import build_buy_preview, build_sell_preview
 from sniper.solana_service import WSOL
-from sniper.ui import card, esc, info
+from sniper.ui import card, esc, info, sol
 
 logger = logging.getLogger(__name__)
 
@@ -161,17 +161,17 @@ def _buy_keyboard(state, settings) -> InlineKeyboardMarkup:
         rows = _preset_rows(FEE_PRESETS, lambda v: (f"{_fee_label(v)}", f"tp:fee:{v}:{mint}"), per_row=3)
         rows.append([InlineKeyboardButton("Back", callback_data=f"tp:menu:{mint}")])
     else:
-        rows = _preset_rows(BUY_PRESETS, lambda v: (f"{v:g} SOL", f"tp:amt:{v}:{mint}"), per_row=3)
+        rows = _preset_rows(BUY_PRESETS, lambda v: (f"💰 {v:g} SOL", f"tp:amt:{v}:{mint}"), per_row=3)
         rows.append([InlineKeyboardButton("Custom", callback_data=f"tp:custom:{mint}")])
         rows.append([
             InlineKeyboardButton(f"Slip {(state.get('slip_bps') or int(settings['slippage_bps'])) / 100:g}%", callback_data=f"tp:slipmenu:{mint}"),
             InlineKeyboardButton(f"Fee {_fee_label(int(state['fee_lamports'])) if state.get('fee_lamports') else 'dyn'}", callback_data=f"tp:feemenu:{mint}"),
         ])
         rows.append([
-            InlineKeyboardButton("Limit", callback_data=f"tp:limit:{mint}"),
+            InlineKeyboardButton("🕓 Limit", callback_data=f"tp:limit:{mint}"),
             InlineKeyboardButton("Close", callback_data=f"tp:close:{mint}"),
         ])
-        confirm = "Confirm buy" + (f" · {float(amount):g} SOL" if amount else "")
+        confirm = "Confirm buy" + (f" · 💰 {float(amount):g} SOL" if amount else "")
         rows.append([InlineKeyboardButton(confirm, callback_data=f"tp:go:{mint}")])
     return InlineKeyboardMarkup(rows)
 
@@ -189,7 +189,7 @@ def _sell_keyboard(state, settings) -> InlineKeyboardMarkup:
         rows = _preset_rows(SELL_PCTS, lambda v: (f"{v}%", f"tp:pct:{v}:{mint}"), per_row=4)
         rows.append([
             InlineKeyboardButton("Custom", callback_data=f"tp:custom:{mint}"),
-            InlineKeyboardButton("Limit", callback_data=f"tp:limit:{mint}"),
+            InlineKeyboardButton("🕓 Limit", callback_data=f"tp:limit:{mint}"),
             InlineKeyboardButton("Trail", callback_data=f"tp:trail:{mint}"),
         ])
         rows.append([
@@ -205,7 +205,7 @@ def _sell_keyboard(state, settings) -> InlineKeyboardMarkup:
             confirm += f" · {amount}"
         rows.append([
             InlineKeyboardButton(confirm, callback_data=f"tp:go:{mint}"),
-            InlineKeyboardButton("Holdings", callback_data="tp:holdings"),
+            InlineKeyboardButton("📈 Holdings", callback_data="tp:holdings"),
             InlineKeyboardButton("Close", callback_data=f"tp:close:{mint}"),
         ])
     return InlineKeyboardMarkup(rows)
@@ -215,7 +215,7 @@ def _holdings_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton("Refresh", callback_data="tp:refreshsell"),
+                InlineKeyboardButton("🔄 Refresh", callback_data="tp:refreshsell"),
                 InlineKeyboardButton("Paste mint", callback_data="tp:paste"),
                 InlineKeyboardButton("Close", callback_data="tp:close"),
             ],
@@ -290,14 +290,14 @@ def _buy_text(state, settings, balance_sol, profile, mint) -> str:
         if metrics:
             asset.append(" · ".join(metrics))
     asset += ["Mint", esc(mint)]
-    asset.append(f"Balance: {balance_sol:.6f} SOL" if balance_sol is not None else "Balance: unavailable")
+    asset.append(f"Balance: {sol(balance_sol)}" if balance_sol is not None else "Balance: unavailable")
     lines.append(card(asset))
     lines += ["", "<b>ORDER</b>"]
     amount = state.get("amount")
     lines.append(
         card(
             [
-                f"Spend: {float(amount):.6f} SOL" if amount else "Spend: select below",
+                f"Spend: {sol(amount)}" if amount else "Spend: select below",
                 _slip_line(state, settings),
                 _fee_line(state, settings),
             ]
@@ -708,7 +708,7 @@ def _trigger_line(row) -> str:
     short = f"{mint[:6]}…{mint[-4:]}"
     kind = row["kind"]
     if kind == "limit_buy":
-        return f"LIMIT BUY · {float(row['amount_sol']):g} SOL · at or below ${float(row['target_price_usd']):g} · {short}"
+        return f"LIMIT BUY · {sol(row['amount_sol'])} · at or below ${float(row['target_price_usd']):g} · {short}"
     if kind == "limit_sell":
         return f"LIMIT SELL · {float(row['sell_percent']):g}% · at or above ${float(row['target_price_usd']):g} · {short}"
     peak = float(row["peak_price_usd"] or 0)
@@ -881,7 +881,7 @@ def _armed_reply(headline: str, detail: list[str], trigger_id: int) -> str:
             *detail,
             f"Reference #{trigger_id}",
             "",
-            info("Checked about every 15 seconds. Manual orders do not use the Autosnipe safety gate."),
+            info("Checked about every 15 seconds. Manual orders do not use the 🎯 Autosnipe safety gate."),
         ]
     )
 
@@ -966,7 +966,7 @@ async def _limit_buy_done(update, context, data) -> None:
         update,
         _armed_reply(
             "<b>LIMIT BUY ACTIVATED</b>",
-            [f"Mint: {esc(mint)}", f"Trigger: price ≤ ${price:g}", f"Spend: {amount:.4f} SOL"],
+            [f"Mint: {esc(mint)}", f"Trigger: price ≤ ${price:g}", f"Spend: {sol(amount)}"],
             trigger_id,
         ),
     )

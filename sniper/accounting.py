@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from sniper.ui import sol
+
 
 def apply_buy(amount_raw: int, cost_sol: float, buy_raw: int, buy_sol: float) -> tuple[int, float]:
     if buy_raw < 0 or buy_sol < 0:
@@ -60,17 +62,17 @@ def spend_decision(
     if global_paused:
         return False, "Trading is paused. Try again later."
     if user_paused:
-        return False, "Trading is paused for this account. Use /resume before new requests. Review /autosnipe before you rely on automation."
+        return False, "Trading is paused for this account. Use /resume before new requests. Review 🎯 /autosnipe before you rely on automation."
     if amount_sol <= 0:
         return False, "Amount must be greater than zero."
     if amount_sol > absolute_max_sol:
-        return False, f"Amount exceeds the absolute maximum of {absolute_max_sol:g} SOL."
+        return False, f"Amount exceeds the absolute maximum of {sol(absolute_max_sol)}."
     if amount_sol > max_per_trade + 1e-12:
-        return False, f"Requested amount ({amount_sol:.6f} SOL) exceeds the per-trade limit ({max_per_trade:.6f} SOL). Change max per trade in /config, or reduce the amount."
+        return False, f"Requested amount ({sol(amount_sol)}) exceeds the per-trade limit ({sol(max_per_trade)}). Change max per trade in /config, or reduce the amount."
     if spent_today + amount_sol > daily_limit + 1e-9:
         return False, (
-            f"This would spend {spent_today + amount_sol:.6f} SOL today, "
-            f"above the daily limit of {daily_limit:.6f} SOL (already used: {spent_today:.6f})."
+            f"This would spend {sol(spent_today + amount_sol)} today, "
+            f"above the daily limit of {sol(daily_limit)} (already used: {sol(spent_today)})."
         )
     if trades_last_hour >= max_trades_per_hour:
         return False, f"Hourly trade limit reached ({max_trades_per_hour} per account). Wait before the next trade."

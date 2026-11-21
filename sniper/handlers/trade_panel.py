@@ -406,7 +406,7 @@ async def open_sell_token_panel(update, context, svc, mint: str, *, query=None, 
 
 
 def _holdings_text(entries, total_value, hidden) -> str:
-    lines = ["<b>SELL · WALLET HOLDINGS</b>", info("Select a holding to open its sell panel."), ""]
+    lines = ["📈 <b>SELL · WALLET HOLDINGS</b>", info("Select a holding to open its sell panel."), ""]
     rows = []
     for index, entry in enumerate(entries, start=1):
         line = f"{index:02d}  {esc(entry['label'])}"
@@ -437,7 +437,7 @@ async def open_sell_holdings(update, context, svc, *, query=None) -> None:
     holdings = {mint: slot for mint, slot in holdings.items() if slot["raw"] > 0}
     if not holdings:
         text = (
-            "<b>SELL · WALLET HOLDINGS</b>\n\n"
+            "📈 <b>SELL · WALLET HOLDINGS</b>\n\n"
             "No SPL token balances in this wallet.\n\n"
             "Use /buy, or send a token mint to check one."
         )
@@ -719,7 +719,7 @@ def _trigger_line(row) -> str:
 
 def _triggers_text(rows) -> str:
     open_rows = [row for row in rows if row["status"] == "open"]
-    lines = ["<b>ORDER MANAGEMENT</b>", info("Armed orders are watched automatically."), "", "<b>ARMED</b>"]
+    lines = ["🕓 <b>ORDER MANAGEMENT</b>", info("Armed orders are watched automatically."), "", "<b>ARMED</b>"]
     if open_rows:
         armed = [f"#{row['id']}  {_trigger_line(row)}" for row in open_rows]
         lines.append(card(armed))
@@ -784,7 +784,7 @@ async def on_trigger_callback(update, context) -> None:
         return
     if action == "cancel" and len(parts) == 3 and parts[2].isdigit():
         cancelled = await svc.db.cancel_trigger(int(parts[2]), user_id)
-        await reply(update, "<b>ORDER CANCELLED</b>\nIt will not be submitted." if cancelled else "That order is no longer active.")
+        await reply(update, "🕓 <b>ORDER CANCELLED</b>\nIt will not be submitted." if cancelled else "That order is no longer active.")
         return
     if action == "distmenu" and len(parts) == 3 and parts[2].isdigit():
         rid = int(parts[2])

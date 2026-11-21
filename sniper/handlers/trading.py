@@ -322,7 +322,7 @@ async def on_trade_callback(update, context) -> None:
         update,
         "\n".join(
             [
-                "<b>ORDER QUEUED</b>",
+                "🕓 <b>ORDER QUEUED</b>",
                 "",
                 card(
                     [

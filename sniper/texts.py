@@ -78,7 +78,7 @@ A manual trade still shows the report. The decision stays yours.
 Missing data does not mean a token is safe.
 
 """ + info("Use /scan and send a mint."),
-    "security": """<b>WALLET SECURITY</b>
+    "security": """💳 <b>WALLET SECURITY</b>
 <i>Treat the connected wallet as a trading wallet only.</i>
 
 Keys are encrypted at rest and are never shown in chat.
@@ -91,7 +91,7 @@ Never share a recovery phrase or private key. It is requested only inside /impor
 
 HELP_MENU = "<b>HELP</b>\n" + info("Choose a topic.")
 
-IMPORT_WARNING = """<b>WALLET IMPORT</b>
+IMPORT_WARNING = """💳 <b>WALLET IMPORT</b>
 <i>This replaces the wallet connected to this account.</i>
 
 Use a dedicated trading wallet. Fund only what you are prepared to trade.

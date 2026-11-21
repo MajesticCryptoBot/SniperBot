@@ -41,7 +41,7 @@ async def wallet(update, context) -> None:
         update,
         "\n".join(
             [
-                "👛 <b>WALLET</b>",
+                "💳 <b>WALLET</b>",
                 info("Connected trading wallet."),
                 "",
                 card(
@@ -50,6 +50,7 @@ async def wallet(update, context) -> None:
                         mono(row["wallet_address"]),
                         "",
                         f"Balance: {esc(balance)}",
+                        "🔗 Solana",
                         f"Trading: {paused}",
                     ]
                 ),
@@ -174,7 +175,7 @@ async def import_confirm(update, context: ContextTypes.DEFAULT_TYPE):
     logger.info("wallet imported user=%s", update.effective_user.id)
     await reply(
         update,
-        "<b>WALLET REPLACED</b>\n\n" + card([f"Connected: {esc(pubkey)}"]),
+        "💳 <b>WALLET REPLACED</b>\n\n" + card([f"Connected: {esc(pubkey)}", "🔗 Solana"]),
     )
     return ConversationHandler.END
 

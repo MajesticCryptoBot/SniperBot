@@ -66,7 +66,7 @@ async def summary(update, context) -> None:
     holdings = []
     sol_balance = lamports_to_sol(lamports)
     lines = ["<b>PORTFOLIO</b>", info("Balances from the wallet. Values are indicative."), ""]
-    lines.append(card(["👛 Wallet", mono(user["wallet_address"])]))
+    lines.append(card(["💳 Wallet", "🔗 Solana", mono(user["wallet_address"])]))
     lines.append("")
     if sol_usd <= 0:
         lines.append(f"SOL: {sol_balance:.6f}")
@@ -74,9 +74,9 @@ async def summary(update, context) -> None:
         lines.append(f"SOL: {sol_balance:.6f} (${sol_balance * sol_usd:,.2f})")
     positions = {row["token_mint"]: row for row in await svc.db.list_positions(user["telegram_id"])}
     if not accounts:
-        lines += ["", "<b>HOLDINGS</b>", "None."]
+        lines += ["", "📈 <b>HOLDINGS</b>", "None."]
     else:
-        lines += ["", "<b>HOLDINGS</b>"]
+        lines += ["", "📈 <b>HOLDINGS</b>"]
     displayed = 0
     omitted = 0
     for item in accounts[:25]:
@@ -131,7 +131,7 @@ def _render_orders(rows: list[dict]) -> str:
         lines += [block, ""]
         used += len(block) + 2
         shown += 1
-    lines.append(info("Signatures can be checked on any Solana explorer."))
+    lines.append("🔗 " + info("Signatures can be checked on any Solana explorer."))
     return "\n".join(lines)
 
 

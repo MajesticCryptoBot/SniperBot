@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 def _format_settings(svc, settings) -> str:
     return "\n".join(
         [
-            "<b>TRADING CONFIGURATION</b>",
+            "⚙️ <b>TRADING CONFIGURATION</b>",
             info("Limits and automation for this account."),
             "",
             "<b>EXECUTION</b>",
@@ -82,7 +82,7 @@ async def apply_config(update, context, svc, name: str, raw_value: str) -> None:
         raise UserFacingError("Snipe amount is above the per-trade maximum. Raise max per trade, or lower the amount.")
     await svc.db.update_setting(user_id, column, value)
     settings = await svc.db.get_settings(user_id)
-    await reply(update, "<b>SETTING UPDATED</b>\n\n" + _format_settings(svc, settings))
+    await reply(update, "⚙️ <b>SETTING UPDATED</b>\n\n" + _format_settings(svc, settings))
 
 
 @callback_guard

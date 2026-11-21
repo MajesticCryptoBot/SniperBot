@@ -201,7 +201,7 @@ async def _maybe_auto_buy(update, context, svc, mint: str, info: dict) -> bool:
         update,
         "\n".join(
             [
-                "🤖 <b>AUTO-BUY REQUEST QUEUED</b>",
+                "⚡️ <b>AUTO-BUY REQUEST QUEUED</b>",
                 "",
                 card(
                     [

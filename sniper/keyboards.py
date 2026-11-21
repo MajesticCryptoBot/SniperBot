@@ -113,7 +113,7 @@ def wallet_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton("Refresh", callback_data="wal:refresh"),
-                InlineKeyboardButton("Settings", callback_data="wal:config"),
+                InlineKeyboardButton("⚙️ Settings", callback_data="wal:config"),
             ],
         ]
     )
@@ -126,7 +126,7 @@ def help_menu_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton("Autosnipe", callback_data="help:autosnipe"),
                 InlineKeyboardButton("Safety", callback_data="help:safety"),
             ],
-            [InlineKeyboardButton("Wallet security", callback_data="help:security")],
+            [InlineKeyboardButton("💳 Wallet security", callback_data="help:security")],
         ]
     )
 
@@ -139,7 +139,7 @@ def help_topic_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton("Safety", callback_data="help:safety"),
             ],
             [
-                InlineKeyboardButton("Wallet security", callback_data="help:security"),
+                InlineKeyboardButton("💳 Wallet security", callback_data="help:security"),
                 InlineKeyboardButton("Commands", callback_data="help:main"),
             ],
         ]

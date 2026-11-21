@@ -458,7 +458,7 @@ async def test_auto_buy_fires_instead_of_the_panel():
     handled = await detect_from_text(make_update(message), None, svc, MINT)
     assert handled
     assert queue.buys == [("7", MINT, 0.05)]
-    assert any(text.startswith("🤖") and "AUTO-BUY REQUEST QUEUED" in text for text in message.sent)
+    assert any(text.startswith("⚡️") and "AUTO-BUY REQUEST QUEUED" in text for text in message.sent)
     assert any("Scan: clear" in text for text in message.sent)
     assert not any("TOKEN DETECTED" in text for text in message.sent)  # no panel — it bought
 

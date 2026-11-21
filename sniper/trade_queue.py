@@ -501,7 +501,7 @@ class TradeQueue:
             preview.chat_id,
             "\n".join(
                 [
-                    "<b>AUTO-BUY TRIGGERED</b>",
+                    "⚡️ <b>AUTO-BUY TRIGGERED</b>",
                     "",
                     card(
                         [
@@ -544,9 +544,9 @@ class TradeQueue:
             return None, "sell amount rounded to zero"
         price_text = f"${float(price_usd):g}" if price_usd else "n/a"
         if kind == "stop_loss":
-            headline = f"<b>STOP-LOSS TRIGGERED</b>\n\nMint: {esc(mint)}\nPerformance: {pnl_pct:.1f}% · price {price_text}"
+            headline = f"⚡️ <b>STOP-LOSS TRIGGERED</b>\n\nMint: {esc(mint)}\nPerformance: {pnl_pct:.1f}% · price {price_text}"
         else:
-            headline = f"<b>TAKE-PROFIT TRIGGERED</b>\n\nMint: {esc(mint)}\nPerformance: +{pnl_pct:.1f}% · price {price_text}"
+            headline = f"⚡️ <b>TAKE-PROFIT TRIGGERED</b>\n\nMint: {esc(mint)}\nPerformance: +{pnl_pct:.1f}% · price {price_text}"
         preview = PendingPreview(
             preview_id=idem,
             telegram_id=telegram_id,
